@@ -1,0 +1,26 @@
+{
+  "name": "softgames-assignment",
+  "description": "SOFTGAMES Game Developer Technical Assessment - 3 interactive demos",
+  "author": "Javier Moreno",
+  "homepage": "https://javideas.github.io/Game-Developer-Tasks/",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "gh-pages -d dist",
+    "clean": "rimraf ./dist"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0",
+    "rimraf": "^6.1.2",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  },
+  "dependencies": {
+    "gsap": "^3.14.2",
+    "pixi.js": "^7.4.3"
+  }
+}
