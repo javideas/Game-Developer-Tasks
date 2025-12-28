@@ -89,9 +89,9 @@ const tileContainers: Container[] = [];
 
 // Vite will bundle these assets and give us URLs.
 // Using imports keeps everything versioned alongside the code.
-import aceThumbUrl from './assets/sprites/thumbnails/ace-of-shadows-miniature.png';
-import magicThumbUrl from './assets/sprites/thumbnails/magic-words-miniature.png';
-import phoenixThumbUrl from './assets/sprites/thumbnails/phoenix-flames-miniature.png';
+import aceThumbUrl from './assets/sprites/thumbnails/ace-of-shadows-thumbnail.png';
+import magicThumbUrl from './assets/sprites/thumbnails/magic-words-thumbnail.png';
+import phoenixThumbUrl from './assets/sprites/thumbnails/phoenix-flames-thumbnail.png';
 
 const menuTilesData = [
   { key: 'ace', label: 'Ace of Shadows', thumbnailUrl: aceThumbUrl },
@@ -136,8 +136,6 @@ function createMenuTile(opts: { label: string; thumbnailUrl: string; onClick: ()
   img.height = h;
   img.mask = mask;
   tile.addChild(img);
-
-  // Note: per-tile title strip removed (miniature already contains branding/title artwork)
 
   // Hover overlay (CLICK TO PLAY)
   const hover = new Container();
@@ -199,7 +197,7 @@ function createMenuTile(opts: { label: string; thumbnailUrl: string; onClick: ()
   layoutPillContent();
   icon.texture.baseTexture.once('loaded', layoutPillContent);
 
-  // IMPORTANT: hover overlay must start at y=0, otherwise dim only covers half the tile
+  // Hover overlay must start at y=0, otherwise dim only covers half the tile
   hover.x = 0;
   hover.y = 0;
   tile.addChild(hover);
@@ -233,7 +231,7 @@ function buildMenuUI(): void {
   
   let currentY = 0;
 
-  // ---- Title (BESTGAMES style: orange box with white text) ----
+  // ---- Title (Orange box with white text) ----
   const titleContainer = new Container();
 
   const titleStyle = new TextStyle({
@@ -251,7 +249,7 @@ function buildMenuUI(): void {
   const titlePaddingX = 20;
   const titlePaddingY = 10;
   const titleBg = new Graphics();
-  titleBg.beginFill(0xF7941D); // BESTGAMES orange
+  titleBg.beginFill(0xF7941D);
   titleBg.drawRect(
     -title.width / 2 - titlePaddingX,
     -title.height / 2 - titlePaddingY,
@@ -280,7 +278,7 @@ function buildMenuUI(): void {
   menuContainer.addChild(subtitle);
   currentY += subtitle.height + DESIGN.subtitle.marginBottom;
   
-  // ---- Tiles (Games miniatures) ----
+  // ---- Tiles (Games thumbnails) ----
   const gap = DESIGN.tile.gap;
   const w = DESIGN.tile.width;
   const h = DESIGN.tile.height;
