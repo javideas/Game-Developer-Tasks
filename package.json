@@ -20,6 +20,7 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
+    "@pixi/filter-motion-blur": "^5.1.1",
     "gsap": "^3.14.2",
     "pixi.js": "^7.4.3"
   }

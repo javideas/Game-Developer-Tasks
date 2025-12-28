@@ -65,6 +65,7 @@ export class Button extends Container {
       fill: textColor,
     });
     this.label = new Text(label, style);
+    this.label.resolution = 2;
     this.label.anchor.set(0.5);
     this.addChild(this.label);
 

@@ -45,7 +45,7 @@ export abstract class BaseGameScene implements Scene {
   protected gameContainer: Container;
   
   /** Back button (floating UI, not scaled) */
-  private backButton: Button | null = null;
+  protected backButton: Button | null = null;
 
   /** Original document title (to restore on exit) */
   private originalTitle: string;
