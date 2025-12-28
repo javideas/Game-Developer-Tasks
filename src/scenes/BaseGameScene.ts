@@ -1,4 +1,4 @@
-import { Container } from 'pixi.js';
+import { Container, Sprite } from 'pixi.js';
 import type { Scene } from '../core/SceneManager';
 import type { Application } from '../core/Application';
 import { Button } from '../components/Button';
@@ -8,6 +8,8 @@ export interface BaseGameSceneOptions {
   title: string;
   /** Callback when back button is clicked */
   onBack: () => void;
+  /** Optional fullscreen background image URL */
+  backgroundUrl?: string;
 }
 
 /** Design constants for game scenes */
@@ -23,7 +25,7 @@ const SCENE_DESIGN = {
  * BaseGameScene
  * 
  * Abstract base class for game scenes. Provides:
- * - Fullscreen layout (background will extend to edges)
+ * - Fullscreen background image (optional, covers entire screen)
  * - Browser tab title updates to game name
  * - Back to menu button (floating, top-left)
  * - Responsive content container that scales to fit
@@ -35,6 +37,9 @@ export abstract class BaseGameScene implements Scene {
   
   protected app: Application;
   protected options: BaseGameSceneOptions;
+  
+  /** Fullscreen background sprite */
+  private background: Sprite | null = null;
   
   /** Scalable content container for game elements */
   protected gameContainer: Container;
@@ -52,21 +57,64 @@ export abstract class BaseGameScene implements Scene {
     
     this.container = new Container();
     this.gameContainer = new Container();
-    this.container.addChild(this.gameContainer);
   }
 
   onStart(): void {
     // Update browser tab title
     document.title = this.options.title;
     
-    this.buildBackButton();
+    // Build in order: background → gameContainer → UI
+    this.buildBackground();
+    this.container.addChild(this.gameContainer);
     this.buildContent();
+    this.buildBackButton();
     this.layoutScene();
   }
 
   onResize(): void {
+    this.layoutBackground();
     this.layoutScene();
     this.positionBackButton();
+  }
+
+  /**
+   * Build fullscreen background if URL provided
+   */
+  private buildBackground(): void {
+    if (!this.options.backgroundUrl) return;
+
+    this.background = Sprite.from(this.options.backgroundUrl);
+    this.background.anchor.set(0.5);
+    this.container.addChild(this.background);
+    this.layoutBackground();
+
+    // Re-layout when texture loads (async)
+    this.background.texture.baseTexture.once('loaded', () => {
+      this.layoutBackground();
+    });
+  }
+
+  /**
+   * Scale and position background to cover entire screen
+   */
+  private layoutBackground(): void {
+    if (!this.background) return;
+
+    const screenW = this.app.width;
+    const screenH = this.app.height;
+
+    // Center the background
+    this.background.x = screenW / 2;
+    this.background.y = screenH / 2;
+
+    // Scale to cover (like CSS background-size: cover)
+    const tex = this.background.texture;
+    if (tex.width > 0 && tex.height > 0) {
+      const scaleX = screenW / tex.width;
+      const scaleY = screenH / tex.height;
+      const scale = Math.max(scaleX, scaleY); // Cover, not contain
+      this.background.scale.set(scale);
+    }
   }
 
   /**
@@ -160,6 +208,10 @@ export abstract class BaseGameScene implements Scene {
 
   destroy(): void {
     this.gameContainer.removeChildren();
+    if (this.background) {
+      this.background.destroy();
+      this.background = null;
+    }
     if (this.backButton) {
       this.backButton.destroy();
       this.backButton = null;
