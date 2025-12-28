@@ -4,6 +4,7 @@ import type { Application } from '../core/Application';
 import { BaseGameScene } from './BaseGameScene';
 import { Button } from '../components/Button';
 import { Slider } from '../components/Slider';
+import { Toggle } from '../components/Toggle';
 import gsap from 'gsap';
 
 /** Scene mode */
@@ -107,6 +108,37 @@ export class AceOfShadowsScene extends BaseGameScene {
 
   /** Sub-mode back button (goes to selection, not menu) */
   private subModeBackButton: Button | null = null;
+
+  /** Realistic 3D shadows enabled */
+  private realisticShadows = true;
+
+  /** Floor shadow sprite - always at floor level, follows card X */
+  private floorShadow: Sprite | null = null;
+
+  /** Stack shadow sprite - appears on top card of stack, masked */
+  private stackShadow: Sprite | null = null;
+
+  /** Stack shadow mask sprite */
+  private stackShadowMask: Sprite | null = null;
+
+  /** Floor Y position (base level for shadows) */
+  private floorY = 0;
+
+  /** Shadow layer - always behind cards */
+  private shadowLayer: Container | null = null;
+
+  /** Card layer - contains both stacks and moving cards */
+  private cardLayer: Container | null = null;
+
+  /** Stack shadow layer - sits ABOVE card stacks for proper visibility */
+  private stackShadowLayer: Container | null = null;
+
+  /** Moving card layer - ABOVE everything, for the card currently animating */
+  private movingCardLayer: Container | null = null;
+
+  /** Card dimensions for calculations */
+  private cardWidth = 0;
+  private cardHeight = 0;
 
   constructor(app: Application, onBack: () => void) {
     super(app, {
@@ -288,6 +320,35 @@ export class AceOfShadowsScene extends BaseGameScene {
       this.moveInterval = DEFAULT_MOVE_INTERVAL;
       this.moveDuration = DEFAULT_MOVE_DURATION;
       this.motionBlurStrength = DEFAULT_MOTION_BLUR;
+      
+      // Clean up shadow sprites
+      if (this.floorShadow) {
+        this.floorShadow.destroy();
+        this.floorShadow = null;
+      }
+      if (this.stackShadow) {
+        this.stackShadow.destroy();
+        this.stackShadow = null;
+      }
+      if (this.stackShadowMask) {
+        this.stackShadowMask.destroy();
+        this.stackShadowMask = null;
+      }
+      
+      // Clean up layers
+      if (this.shadowLayer) {
+        this.shadowLayer.destroy({ children: true });
+        this.shadowLayer = null;
+      }
+      // stackShadowLayer and movingCardLayer are children of cardLayer, will be destroyed with it
+      this.stackShadowLayer = null;
+      this.movingCardLayer = null;
+      if (this.cardLayer) {
+        this.cardLayer.destroy({ children: true });
+        this.cardLayer = null;
+      }
+      
+      this.realisticShadows = false;
     }
   }
 
@@ -295,9 +356,31 @@ export class AceOfShadowsScene extends BaseGameScene {
    * Start the literal task implementation
    */
   private startLiteralMode(): void {
-    // Recreate containers (in case they were removed)
+    // Create layer hierarchy for proper z-ordering:
+    // shadowLayer → floor shadow (behind everything)
+    // cardLayer → contains stacks and stackShadowLayer
+    this.shadowLayer = new Container();
+    this.cardLayer = new Container();
+    
+    // Add layers to gameContainer
+    this.gameContainer.addChild(this.shadowLayer);
+    this.gameContainer.addChild(this.cardLayer);
+    
+    // Recreate stack containers
     this.leftContainer = new Container();
     this.rightContainer = new Container();
+    
+    // Add stack containers to card layer
+    this.cardLayer.addChild(this.leftContainer);
+    this.cardLayer.addChild(this.rightContainer);
+    
+    // Stack shadow layer - sits ABOVE the card stacks (so shadow appears ON cards)
+    this.stackShadowLayer = new Container();
+    this.cardLayer.addChild(this.stackShadowLayer);
+    
+    // Moving card layer - ABOVE everything (moving card always on top)
+    this.movingCardLayer = new Container();
+    this.cardLayer.addChild(this.movingCardLayer);
     
     this.createShadowTexture();
     this.createCardStacks();
@@ -340,8 +423,8 @@ export class AceOfShadowsScene extends BaseGameScene {
   private createSliderUI(): void {
     this.sliderContainer = new Container();
     
-    // Background panel
-    const panelWidth = 450;
+    // Background panel (wider to fit toggle)
+    const panelWidth = 550;
     const panelHeight = 60;
     const panel = new Graphics();
     panel.beginFill(0x000000, 0.7);
@@ -349,12 +432,11 @@ export class AceOfShadowsScene extends BaseGameScene {
     panel.endFill();
     this.sliderContainer.addChild(panel);
 
-    // Slider layout: 3 sliders of 100px each, evenly distributed
+    // Layout: 3 sliders + 1 toggle
     const sliderWidth = 100;
-    const sliderSpacing = 140; // Distance between slider centers
-    const sliderY = 5;
+    const controlY = 5;
 
-    // Interval slider (left)
+    // Interval slider
     const intervalSlider = new Slider({
       label: 'Interval',
       value: this.moveInterval,
@@ -368,11 +450,11 @@ export class AceOfShadowsScene extends BaseGameScene {
         this.restartAnimation();
       }
     });
-    intervalSlider.x = -sliderSpacing - sliderWidth / 2;
-    intervalSlider.y = sliderY;
+    intervalSlider.x = -220;
+    intervalSlider.y = controlY;
     this.sliderContainer.addChild(intervalSlider);
 
-    // Duration slider (center)
+    // Duration slider
     const durationSlider = new Slider({
       label: 'Duration',
       value: this.moveDuration,
@@ -385,11 +467,11 @@ export class AceOfShadowsScene extends BaseGameScene {
         this.moveDuration = value;
       }
     });
-    durationSlider.x = -sliderWidth / 2;
-    durationSlider.y = sliderY;
+    durationSlider.x = -100;
+    durationSlider.y = controlY;
     this.sliderContainer.addChild(durationSlider);
 
-    // Motion blur slider (right)
+    // Motion blur slider
     const blurSlider = new Slider({
       label: 'Blur',
       value: this.motionBlurStrength,
@@ -403,9 +485,21 @@ export class AceOfShadowsScene extends BaseGameScene {
         this.motionBlurStrength = value;
       }
     });
-    blurSlider.x = sliderSpacing - sliderWidth / 2;
-    blurSlider.y = sliderY;
+    blurSlider.x = 20;
+    blurSlider.y = controlY;
     this.sliderContainer.addChild(blurSlider);
+
+    // 3D Shadows toggle
+    const shadowToggle = new Toggle({
+      label: '3D Shadows',
+      value: this.realisticShadows,
+      onChange: (value) => {
+        this.realisticShadows = value;
+      }
+    });
+    shadowToggle.x = 160;
+    shadowToggle.y = controlY - 10;
+    this.sliderContainer.addChild(shadowToggle);
 
     // Position at bottom of game area (design coordinates)
     this.sliderContainer.x = 400; // Center of 800px design width
@@ -550,6 +644,163 @@ export class AceOfShadowsScene extends BaseGameScene {
   }
 
   /**
+   * Create both shadow sprites for 3D shadow effect
+   * - floorShadow: In shadowLayer (behind cards), at floor level
+   * - stackShadow: In stackShadowLayer (above cards), masked by card shape
+   */
+  private createShadowSprites(): void {
+    if (!this.shadowTexture || !this.shadowLayer || !this.stackShadowLayer || !this.spritesheet) return;
+    
+    // Floor shadow - in shadowLayer (behind everything)
+    this.floorShadow = new Sprite(this.shadowTexture);
+    this.floorShadow.anchor.set(0.5);
+    this.floorShadow.scale.set(CARD_SCALE);
+    this.floorShadow.alpha = 0;
+    this.shadowLayer.addChild(this.floorShadow);
+    
+    // Stack shadow - in stackShadowLayer (ABOVE card stacks, so visible ON cards)
+    this.stackShadow = new Sprite(this.shadowTexture);
+    this.stackShadow.anchor.set(0.5);
+    this.stackShadow.scale.set(CARD_SCALE);
+    this.stackShadow.alpha = 0;
+    this.stackShadowLayer.addChild(this.stackShadow);
+    
+    // Mask for stack shadow - use a CARD texture for proper clipping
+    const cardTexture = this.spritesheet.textures['sprite-1-1.png'];
+    if (cardTexture) {
+      this.stackShadowMask = new Sprite(cardTexture);
+      this.stackShadowMask.anchor.set(0.5);
+      this.stackShadowMask.scale.set(CARD_SCALE);
+      this.stackShadowMask.visible = false;
+      this.stackShadowLayer.addChild(this.stackShadowMask);
+    }
+  }
+
+  /**
+   * Shadow projection info for the stack shadow
+   */
+  private stackShadowInfo: {
+    visible: boolean;
+    x: number;
+    y: number;
+  } = { visible: false, x: 0, y: 0 };
+
+  /**
+   * Calculate stack shadow visibility and position
+   * Called each frame during animation to determine if card is over a stack
+   * 
+   * Stack shadow only appears if:
+   * 1. Card is over a stack with cards
+   * 2. Moving card is ABOVE the top card of that stack (can cast shadow down onto it)
+   */
+  private calculateStackShadow(
+    cardGameX: number,
+    cardGameY: number,
+    leftStack: Container[],
+    rightStack: Container[]
+  ): void {
+    const leftStackX = this.leftContainer.x;
+    const rightStackX = this.rightContainer.x;
+    
+    // Hit detection width
+    const halfWidth = this.cardWidth / 2 + 10;
+    
+    // Check if over left stack
+    if (Math.abs(cardGameX - leftStackX) < halfWidth && leftStack.length > 0) {
+      const topCard = leftStack[leftStack.length - 1];
+      const topCardY = this.leftContainer.y + topCard.y;
+      
+      // Only show stack shadow if moving card is ABOVE the top card
+      // (lower Y value = higher position on screen)
+      if (cardGameY < topCardY) {
+        this.stackShadowInfo.visible = true;
+        this.stackShadowInfo.x = leftStackX;
+        this.stackShadowInfo.y = topCardY;
+        return;
+      }
+    }
+    
+    // Check if over right stack
+    if (Math.abs(cardGameX - rightStackX) < halfWidth && rightStack.length > 0) {
+      const topCard = rightStack[rightStack.length - 1];
+      const topCardY = this.rightContainer.y + topCard.y;
+      
+      // Only show stack shadow if moving card is ABOVE the top card
+      if (cardGameY < topCardY) {
+        this.stackShadowInfo.visible = true;
+        this.stackShadowInfo.x = rightStackX;
+        this.stackShadowInfo.y = topCardY;
+        return;
+      }
+    }
+    
+    // Not over any stack, or card is below the top card
+    this.stackShadowInfo.visible = false;
+  }
+
+  /**
+   * Update both shadows based on current card position
+   * - floorShadow: Always visible at floor Y, follows card X
+   * - stackShadow: Only visible when over a stack, masked by top card
+   */
+  private updateDualShadows(cardGameX: number, cardGameY: number): void {
+    if (!this.floorShadow || !this.stackShadow || !this.stackShadowMask) return;
+    
+    // Floor shadow - always at floor level, follows card X
+    this.floorShadow.x = cardGameX;
+    this.floorShadow.y = this.floorY;
+    
+    // Scale floor shadow based on card height
+    const heightAboveFloor = this.floorY - cardGameY;
+    const floorShadowScale = CARD_SCALE * (1 + heightAboveFloor * 0.001);
+    this.floorShadow.scale.set(Math.max(CARD_SCALE, floorShadowScale));
+    
+    // Stack shadow - only when over a stack (ON the top card surface)
+    if (this.stackShadowInfo.visible) {
+      this.stackShadow.alpha = SHADOW_ALPHA;
+      // Position shadow at card's X with offset (like attached shadows)
+      this.stackShadow.x = cardGameX + SHADOW_OFFSET_X * CARD_SCALE;
+      this.stackShadow.y = this.stackShadowInfo.y + SHADOW_OFFSET_Y * CARD_SCALE;
+      
+      // Position mask at the top card (no offset - mask is the card itself)
+      this.stackShadowMask.x = this.stackShadowInfo.x;
+      this.stackShadowMask.y = this.stackShadowInfo.y;
+      this.stackShadowMask.visible = true;
+      this.stackShadow.mask = this.stackShadowMask;
+    } else {
+      // Hide stack shadow when not over a stack
+      this.stackShadow.alpha = 0;
+      this.stackShadowMask.visible = false;
+      this.stackShadow.mask = null;
+    }
+  }
+
+  /**
+   * Hide both shadows (called when animation completes)
+   */
+  private hideDualShadows(): void {
+    if (this.floorShadow) {
+      this.floorShadow.alpha = 0;
+    }
+    if (this.stackShadow) {
+      this.stackShadow.alpha = 0;
+      this.stackShadow.mask = null;
+    }
+    if (this.stackShadowMask) {
+      this.stackShadowMask.visible = false;
+    }
+  }
+
+  /**
+   * Get the attached shadow sprite from a card container
+   */
+  private getCardShadow(cardContainer: Container): Sprite | null {
+    // Shadow is the first child of the card container
+    const firstChild = cardContainer.children[0];
+    return firstChild instanceof Sprite ? firstChild : null;
+  }
+
+  /**
    * Create the initial card stacks
    */
   private createCardStacks(): void {
@@ -560,23 +811,27 @@ export class AceOfShadowsScene extends BaseGameScene {
     
     // Get card dimensions for centering calculation
     const sampleTexture = this.spritesheet.textures['sprite-1-1.png'];
-    const cardHeight = sampleTexture ? sampleTexture.height * CARD_SCALE : 90;
+    this.cardWidth = sampleTexture ? sampleTexture.width * CARD_SCALE : 60;
+    this.cardHeight = sampleTexture ? sampleTexture.height * CARD_SCALE : 90;
     
     // Calculate total deck height (cards stack upward with negative Y)
-    const deckHeight = (TOTAL_CARDS - 1) * CARD_OFFSET + cardHeight;
-    
-    // Add containers to game area
-    this.gameContainer.addChild(this.leftContainer);
-    this.gameContainer.addChild(this.rightContainer);
+    const deckHeight = (TOTAL_CARDS - 1) * CARD_OFFSET + this.cardHeight;
     
     // Position stacks: centered vertically, with deck bottom at center
     // The deck grows upward (negative Y), so position at vertical center + half deck height
-    const centerY = 300 + deckHeight / 2 - cardHeight / 2;
+    const centerY = 300 + deckHeight / 2 - this.cardHeight / 2;
     
     this.leftContainer.x = 200;
     this.leftContainer.y = centerY;
     this.rightContainer.x = 600;
     this.rightContainer.y = centerY;
+    
+    // Floor Y = bottom of the stack (where card index 0 sits)
+    // The bottom card is at y=0 in stack coords, so floor = stack.y (the base)
+    this.floorY = centerY;
+    
+    // Create both shadow sprites (floor + stack)
+    this.createShadowSprites();
     
     // Create 144 cards in the left stack
     for (let i = 0; i < TOTAL_CARDS; i++) {
@@ -655,18 +910,25 @@ export class AceOfShadowsScene extends BaseGameScene {
     const cardContainer = this.leftStack.pop()!;
     this.isAnimating = true;
 
-    // Target position on right stack
+    // Target position on right stack (in rightContainer local coords)
     const targetY = -this.rightStack.length * CARD_OFFSET;
 
-    // Convert position to right container's local coords
+    // Get card's current position in game coordinates
     const globalPos = this.leftContainer.toGlobal(cardContainer.position);
-    const localPos = this.rightContainer.toLocal(globalPos);
+    const gamePos = this.cardLayer!.toLocal(globalPos);
 
-    // Move to right container
+    // Calculate target position in game coordinates
+    const targetGameX = this.rightContainer.x;
+    const targetGameY = this.rightContainer.y + targetY;
+
+    // Move card to movingCardLayer (on top of everything during animation)
     this.leftContainer.removeChild(cardContainer);
-    this.rightContainer.addChild(cardContainer);
-    cardContainer.x = localPos.x;
-    cardContainer.y = localPos.y;
+    this.movingCardLayer!.addChild(cardContainer);
+    cardContainer.x = gamePos.x;
+    cardContainer.y = gamePos.y;
+
+    // For motion blur calculation
+    const localPos = { x: gamePos.x - targetGameX, y: gamePos.y - targetGameY };
 
     // Calculate velocity direction for motion blur
     const deltaX = 0 - localPos.x;
@@ -679,22 +941,63 @@ export class AceOfShadowsScene extends BaseGameScene {
     const motionBlur = new MotionBlurFilter([normalizedX, normalizedY], 9);
     cardContainer.filters = [motionBlur];
 
-    // Animate to final position
+    // 3D Shadow handling - dual shadow system
+    const attachedShadow = this.getCardShadow(cardContainer);
+    if (this.realisticShadows && attachedShadow && this.floorShadow) {
+      // Hide attached shadow on moving card
+      attachedShadow.visible = false;
+      
+      // Show floor shadow
+      this.floorShadow.alpha = SHADOW_ALPHA;
+      
+      // Initial shadow positions (card is now in game coordinates)
+      this.calculateStackShadow(gamePos.x, gamePos.y, this.leftStack, this.rightStack);
+      this.updateDualShadows(gamePos.x, gamePos.y);
+    }
+
+    // Animate to final position (in game coordinates since card is in movingCardLayer)
     gsap.to(cardContainer, {
-      x: 0,
-      y: targetY,
+      x: targetGameX,
+      y: targetGameY,
       duration: this.moveDuration,
       ease: 'power2.inOut',
       onUpdate: () => {
         // Reduce blur as we approach destination
-        const progress = gsap.getProperty(cardContainer, 'x') as number;
-        const remaining = Math.abs(progress) / Math.abs(localPos.x || 1);
+        const currentX = gsap.getProperty(cardContainer, 'x') as number;
+        const progress = Math.abs(currentX - targetGameX);
+        const total = Math.abs(gamePos.x - targetGameX) || 1;
+        const remaining = progress / total;
         motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
+        
+        // Update dual shadows (3D effect)
+        if (this.realisticShadows && this.floorShadow) {
+          const cardGameX = gsap.getProperty(cardContainer, 'x') as number;
+          const cardGameY = gsap.getProperty(cardContainer, 'y') as number;
+          
+          // Calculate which stack (if any) the card is over
+          this.calculateStackShadow(cardGameX, cardGameY, this.leftStack, this.rightStack);
+          
+          // Update both shadows
+          this.updateDualShadows(cardGameX, cardGameY);
+        }
       },
       onComplete: () => {
         cardContainer.filters = [];
+        
+        // Move card from movingCardLayer to destination container
+        this.movingCardLayer!.removeChild(cardContainer);
+        this.rightContainer.addChild(cardContainer);
+        cardContainer.x = 0;
+        cardContainer.y = targetY;
+        
         this.rightStack.push(cardContainer);
         this.isAnimating = false;
+        
+        // Restore attached shadow, hide dual shadows
+        if (attachedShadow) {
+          attachedShadow.visible = true;
+        }
+        this.hideDualShadows();
       }
     });
   }
@@ -702,28 +1005,36 @@ export class AceOfShadowsScene extends BaseGameScene {
   /**
    * Move the bottom card from right stack to left stack
    * The remaining cards in right stack "fall down" to fill the gap
+   * 
+   * Note: Bottom card stays BEHIND the stacks during animation (in shadowLayer)
+   * because it's coming from the bottom of the source stack.
    */
   private moveBottomCardToLeft(): void {
     // Take the bottom card (index 0)
     const cardContainer = this.rightStack.shift()!;
     this.isAnimating = true;
 
-    // Target position on left stack (on top)
+    // Target position on left stack (in leftContainer local coords)
     const targetY = -this.leftStack.length * CARD_OFFSET;
 
-    // Convert position to left container's local coords
+    // Get card's current position in game coordinates
     const globalPos = this.rightContainer.toGlobal(cardContainer.position);
-    const localPos = this.leftContainer.toLocal(globalPos);
+    const gamePos = this.gameContainer.toLocal(globalPos);
 
-    // Move to left container
+    // Calculate target position in game coordinates (relative to gameContainer)
+    const targetGameX = this.leftContainer.x;
+    const targetGameY = this.leftContainer.y + targetY;
+
+    // Move card to shadowLayer (BEHIND stacks) since it's coming from the bottom
+    // This keeps it behind the source stack during animation
     this.rightContainer.removeChild(cardContainer);
-    this.leftContainer.addChild(cardContainer);
-    cardContainer.x = localPos.x;
-    cardContainer.y = localPos.y;
+    this.shadowLayer!.addChild(cardContainer);
+    cardContainer.x = gamePos.x;
+    cardContainer.y = gamePos.y;
 
-    // Calculate velocity direction for motion blur
-    const deltaX = 0 - localPos.x;
-    const deltaY = targetY - localPos.y;
+    // For motion blur calculation
+    const deltaX = targetGameX - gamePos.x;
+    const deltaY = targetGameY - gamePos.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     const normalizedX = distance > 0 ? (deltaX / distance) * this.motionBlurStrength : 0;
     const normalizedY = distance > 0 ? (deltaY / distance) * this.motionBlurStrength : 0;
@@ -732,23 +1043,83 @@ export class AceOfShadowsScene extends BaseGameScene {
     const motionBlur = new MotionBlurFilter([normalizedX, normalizedY], 9);
     cardContainer.filters = [motionBlur];
 
-    // Animate the moved card to left stack
+    // 3D Shadow handling - dual shadow system
+    const attachedShadow = this.getCardShadow(cardContainer);
+    if (this.realisticShadows && attachedShadow && this.floorShadow) {
+      // Hide attached shadow on moving card
+      attachedShadow.visible = false;
+      
+      // Show floor shadow
+      this.floorShadow.alpha = SHADOW_ALPHA;
+      
+      // Initial shadow positions (card is now in game coordinates)
+      this.calculateStackShadow(gamePos.x, gamePos.y, this.leftStack, this.rightStack);
+      this.updateDualShadows(gamePos.x, gamePos.y);
+    }
+
+    // Track if card has been promoted to top layer
+    let promotedToTop = false;
+    const rightStackX = this.rightContainer.x;
+    // Card must be fully clear of B deck (center distance > full card width)
+    const clearanceDistance = this.cardWidth;
+
+    // Animate to final position (starts in shadowLayer, promotes to movingCardLayer when leaving B)
     gsap.to(cardContainer, {
-      x: 0,
-      y: targetY,
+      x: targetGameX,
+      y: targetGameY,
       duration: this.moveDuration,
       ease: 'power2.inOut',
       onUpdate: () => {
         // Reduce blur as we approach destination
-        const progress = Math.abs(gsap.getProperty(cardContainer, 'x') as number);
-        const total = Math.abs(localPos.x || 1);
+        const currentX = gsap.getProperty(cardContainer, 'x') as number;
+        const progress = Math.abs(currentX - targetGameX);
+        const total = Math.abs(gamePos.x - targetGameX) || 1;
         const remaining = progress / total;
         motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
+        
+        // When card is fully clear of B deck, promote it to top layer (on top of A deck)
+        if (!promotedToTop && Math.abs(currentX - rightStackX) > clearanceDistance) {
+          promotedToTop = true;
+          const currentY = gsap.getProperty(cardContainer, 'y') as number;
+          this.shadowLayer!.removeChild(cardContainer);
+          this.movingCardLayer!.addChild(cardContainer);
+          cardContainer.x = currentX;
+          cardContainer.y = currentY;
+        }
+        
+        // Update dual shadows (3D effect)
+        if (this.realisticShadows && this.floorShadow) {
+          const cardGameX = gsap.getProperty(cardContainer, 'x') as number;
+          const cardGameY = gsap.getProperty(cardContainer, 'y') as number;
+          
+          // Calculate which stack (if any) the card is over
+          this.calculateStackShadow(cardGameX, cardGameY, this.leftStack, this.rightStack);
+          
+          // Update both shadows
+          this.updateDualShadows(cardGameX, cardGameY);
+        }
       },
       onComplete: () => {
         cardContainer.filters = [];
+        
+        // Move card from current layer to destination container
+        if (promotedToTop) {
+          this.movingCardLayer!.removeChild(cardContainer);
+        } else {
+          this.shadowLayer!.removeChild(cardContainer);
+        }
+        this.leftContainer.addChild(cardContainer);
+        cardContainer.x = 0;
+        cardContainer.y = targetY;
+        
         this.leftStack.push(cardContainer);
         this.isAnimating = false;
+        
+        // Restore attached shadow, hide dual shadows
+        if (attachedShadow) {
+          attachedShadow.visible = true;
+        }
+        this.hideDualShadows();
       }
     });
 
@@ -841,6 +1212,10 @@ export class AceOfShadowsScene extends BaseGameScene {
     if (this.shadowTexture) {
       this.shadowTexture.destroy(true);
       this.shadowTexture = null;
+    }
+    if (this.floorShadow) {
+      this.floorShadow.destroy();
+      this.floorShadow = null;
     }
     super.destroy();
   }
