@@ -55,6 +55,16 @@ const BLUR_SLIDER_STEP = 1;
  */
 const POKER_SUIT_ROWS = [1, 3, 4, 6];
 
+/** Card back texture names (red and dark) */
+const CARD_BACK_RED = 'sprite-7-7.png';
+const CARD_BACK_DARK = 'sprite-8-1.png';
+
+/** Animation mode for card movement */
+type AnimationMode = 'linear' | 'spiral';
+
+/** Arc height for spiral animation (pixels above the straight line) */
+const SPIRAL_ARC_HEIGHT = 80;
+
 /**
  * AceOfShadowsScene
  * 
@@ -111,6 +121,13 @@ export class AceOfShadowsScene extends BaseGameScene {
 
   /** Realistic 3D shadows enabled */
   private realisticShadows = true;
+
+  /** Animation mode: linear (straight) or spiral (arc + flip) */
+  private animationMode: AnimationMode = 'spiral';
+
+  /** Card back textures (red and dark) */
+  private cardBackRedTexture: Texture | null = null;
+  private cardBackDarkTexture: Texture | null = null;
 
   /** Floor shadow sprite - always at floor level, follows card X */
   private floorShadow: Sprite | null = null;
@@ -293,7 +310,10 @@ export class AceOfShadowsScene extends BaseGameScene {
    */
   private cleanupCurrentMode(): void {
     if (this.mode === 'literal') {
-      // Stop animation
+      // FIRST: Kill ALL GSAP tweens globally to prevent animation on destroyed objects
+      gsap.globalTimeline.clear();
+      
+      // Stop animation interval
       if (this.moveIntervalId) {
         clearInterval(this.moveIntervalId);
         this.moveIntervalId = null;
@@ -301,10 +321,6 @@ export class AceOfShadowsScene extends BaseGameScene {
 
       // Remove slider UI
       this.removeSliderUI();
-
-      // Kill GSAP animations
-      gsap.killTweensOf(this.leftContainer.children);
-      gsap.killTweensOf(this.rightContainer.children);
 
       // Clear stacks
       this.leftStack = [];
@@ -356,6 +372,9 @@ export class AceOfShadowsScene extends BaseGameScene {
    * Start the literal task implementation
    */
   private startLiteralMode(): void {
+    // Reset shadow toggle to default (enabled)
+    this.realisticShadows = true;
+    
     // Create layer hierarchy for proper z-ordering:
     // shadowLayer → floor shadow (behind everything)
     // cardLayer → contains stacks and stackShadowLayer
@@ -423,8 +442,8 @@ export class AceOfShadowsScene extends BaseGameScene {
   private createSliderUI(): void {
     this.sliderContainer = new Container();
     
-    // Background panel (wider to fit toggle)
-    const panelWidth = 550;
+    // Background panel (wider to fit toggles and reset buttons)
+    const panelWidth = 750;
     const panelHeight = 60;
     const panel = new Graphics();
     panel.beginFill(0x000000, 0.7);
@@ -432,7 +451,7 @@ export class AceOfShadowsScene extends BaseGameScene {
     panel.endFill();
     this.sliderContainer.addChild(panel);
 
-    // Layout: 3 sliders + 1 toggle
+    // Layout: 3 sliders + 2 toggles + 2 reset buttons
     const sliderWidth = 100;
     const controlY = 5;
 
@@ -450,7 +469,7 @@ export class AceOfShadowsScene extends BaseGameScene {
         this.restartAnimation();
       }
     });
-    intervalSlider.x = -220;
+    intervalSlider.x = -285;
     intervalSlider.y = controlY;
     this.sliderContainer.addChild(intervalSlider);
 
@@ -467,7 +486,7 @@ export class AceOfShadowsScene extends BaseGameScene {
         this.moveDuration = value;
       }
     });
-    durationSlider.x = -100;
+    durationSlider.x = -165;
     durationSlider.y = controlY;
     this.sliderContainer.addChild(durationSlider);
 
@@ -485,7 +504,7 @@ export class AceOfShadowsScene extends BaseGameScene {
         this.motionBlurStrength = value;
       }
     });
-    blurSlider.x = 20;
+    blurSlider.x = -45;
     blurSlider.y = controlY;
     this.sliderContainer.addChild(blurSlider);
 
@@ -497,9 +516,47 @@ export class AceOfShadowsScene extends BaseGameScene {
         this.realisticShadows = value;
       }
     });
-    shadowToggle.x = 160;
+    shadowToggle.x = 75;
     shadowToggle.y = controlY - 10;
     this.sliderContainer.addChild(shadowToggle);
+
+    // Spiral mode toggle (flip animation)
+    const spiralToggle = new Toggle({
+      label: 'Spiral',
+      value: this.animationMode === 'spiral',
+      onChange: (value) => {
+        this.animationMode = value ? 'spiral' : 'linear';
+      }
+    });
+    spiralToggle.x = 145;
+    spiralToggle.y = controlY - 10;
+    this.sliderContainer.addChild(spiralToggle);
+
+    // Reset buttons for quick debugging
+    const resetBtnStyle = {
+      fontSize: 12,
+      fontFamily: 'Arial',
+      fill: 0xFFFFFF,
+      fontWeight: 'bold' as const
+    };
+    const resetBtnWidth = 55;
+    const resetBtnHeight = 28;
+
+    // Reset to A (left deck)
+    const resetABtn = this.createResetButton('A', resetBtnWidth, resetBtnHeight, resetBtnStyle, () => {
+      this.resetAllCardsTo('left');
+    });
+    resetABtn.x = 230;
+    resetABtn.y = controlY;
+    this.sliderContainer.addChild(resetABtn);
+
+    // Reset to B (right deck)
+    const resetBBtn = this.createResetButton('B', resetBtnWidth, resetBtnHeight, resetBtnStyle, () => {
+      this.resetAllCardsTo('right');
+    });
+    resetBBtn.x = 295;
+    resetBBtn.y = controlY;
+    this.sliderContainer.addChild(resetBBtn);
 
     // Position at bottom of game area (design coordinates)
     this.sliderContainer.x = 400; // Center of 800px design width
@@ -507,6 +564,134 @@ export class AceOfShadowsScene extends BaseGameScene {
 
     // Add to gameContainer so it scales with responsive layout
     this.gameContainer.addChild(this.sliderContainer);
+  }
+
+  /**
+   * Create a small reset button for the control panel
+   */
+  private createResetButton(
+    label: string,
+    width: number,
+    height: number,
+    style: { fontSize: number; fontFamily: string; fill: number; fontWeight: 'bold' },
+    onClick: () => void
+  ): Container {
+    const btn = new Container();
+    
+    const bg = new Graphics();
+    bg.beginFill(0x444444);
+    bg.drawRoundedRect(-width / 2, -height / 2, width, height, 6);
+    bg.endFill();
+    btn.addChild(bg);
+    
+    const text = new Text(`Reset ${label}`, new TextStyle({
+      fontSize: style.fontSize,
+      fontFamily: style.fontFamily,
+      fill: style.fill,
+      fontWeight: style.fontWeight
+    }));
+    text.resolution = 2;
+    text.anchor.set(0.5);
+    btn.addChild(text);
+    
+    btn.eventMode = 'static';
+    btn.cursor = 'pointer';
+    
+    btn.on('pointerover', () => {
+      bg.tint = 0x666666;
+    });
+    btn.on('pointerout', () => {
+      bg.tint = 0xFFFFFF;
+    });
+    btn.on('pointerdown', onClick);
+    
+    return btn;
+  }
+
+  /**
+   * Instantly reset all cards to one deck (for debugging)
+   * Complete reset - like refreshing the page but starting with selected deck
+   */
+  private resetAllCardsTo(target: 'left' | 'right'): void {
+    // 1. STOP EVERYTHING - Kill ALL GSAP tweens globally
+    gsap.globalTimeline.clear();
+    
+    // 2. Stop the animation interval
+    if (this.moveIntervalId) {
+      clearInterval(this.moveIntervalId);
+      this.moveIntervalId = null;
+    }
+    
+    // 3. Hide and reset shadows
+    this.hideDualShadows();
+    
+    // 4. Clear all containers completely
+    if (this.movingCardLayer) {
+      this.movingCardLayer.removeChildren();
+    }
+    if (this.shadowLayer) {
+      // Keep floor shadow, remove everything else
+      const children = [...this.shadowLayer.children];
+      for (const child of children) {
+        if (child !== this.floorShadow) {
+          this.shadowLayer.removeChild(child);
+        }
+      }
+    }
+    this.leftContainer.removeChildren();
+    this.rightContainer.removeChildren();
+    
+    // 5. Clear stack arrays
+    this.leftStack = [];
+    this.rightStack = [];
+    
+    // 6. Reset animation state
+    this.isAnimating = false;
+    this.movingToRight = target === 'left'; // Next move goes away from the reset deck
+    
+    // 7. Rebuild the deck fresh (creates new cards)
+    if (!this.spritesheet) return;
+    
+    // Load card back textures (in case they were lost)
+    this.cardBackRedTexture = this.spritesheet.textures[CARD_BACK_RED] || null;
+    this.cardBackDarkTexture = this.spritesheet.textures[CARD_BACK_DARK] || null;
+    
+    // Build fresh deck
+    const deck = this.buildDeck();
+    
+    // Determine which container and stack to use
+    const targetContainer = target === 'left' ? this.leftContainer : this.rightContainer;
+    const targetStack = target === 'left' ? this.leftStack : this.rightStack;
+    
+    // Create 144 fresh cards
+    for (let i = 0; i < TOTAL_CARDS; i++) {
+      const textureName = deck[i];
+      const texture = this.spritesheet.textures[textureName];
+      
+      if (!texture) continue;
+      
+      const cardContainer = this.createCardWithShadow(texture, textureName);
+      
+      // Position in stack
+      cardContainer.x = 0;
+      cardContainer.y = -i * CARD_OFFSET;
+      
+      // If resetting to B, show back texture
+      if (target === 'right') {
+        const cardSprite = this.getCardSprite(cardContainer);
+        const backTexture = this.getCardBackTexture(textureName);
+        if (cardSprite && backTexture) {
+          cardSprite.texture = backTexture;
+          (cardContainer as any).isShowingFace = false;
+        }
+      }
+      
+      targetContainer.addChild(cardContainer);
+      targetStack.push(cardContainer);
+    }
+    
+    // 8. Restart animation
+    this.startCardAnimation();
   }
 
   /**
@@ -618,9 +803,19 @@ export class AceOfShadowsScene extends BaseGameScene {
 
   /**
    * Create a card with shadow as a container
+   * Stores the face texture for flip animation
    */
-  private createCardWithShadow(cardTexture: Texture): Container {
-    const cardContainer = new Container();
+  private createCardWithShadow(cardTexture: Texture, textureName: string): Container {
+    const cardContainer = new Container() as Container & { 
+      faceTexture: Texture; 
+      textureName: string;
+      isShowingFace: boolean;
+    };
+    
+    // Store face texture and name for flip animation
+    cardContainer.faceTexture = cardTexture;
+    cardContainer.textureName = textureName;
+    cardContainer.isShowingFace = true;
     
     // Shadow sprite (offset and semi-transparent)
     if (this.shadowTexture) {
@@ -635,12 +830,38 @@ export class AceOfShadowsScene extends BaseGameScene {
     // Card sprite
     const card = new Sprite(cardTexture);
     card.anchor.set(0.5);
+    card.name = 'cardSprite'; // Name it for easy access
     cardContainer.addChild(card);
     
     // Scale down the card
     cardContainer.scale.set(CARD_SCALE);
     
     return cardContainer;
+  }
+
+  /**
+   * Get the card sprite from a card container
+   */
+  private getCardSprite(cardContainer: Container): Sprite | null {
+    return cardContainer.getChildByName('cardSprite') as Sprite | null;
+  }
+
+  /**
+   * Get the appropriate card back texture based on card suit
+   * Red suits (hearts, diamonds) use red back; black suits (spades, clubs) use dark back
+   */
+  private getCardBackTexture(textureName: string): Texture | null {
+    // Red suits are in rows 1 and 4 (hearts, diamonds)
+    // Dark suits are in rows 3 and 6 (spades, clubs)
+    const match = textureName.match(/sprite-(\d+)-/);
+    if (match) {
+      const row = parseInt(match[1]);
+      // Rows 1, 4 are red suits; rows 3, 6 are dark suits
+      if (row === 1 || row === 4) {
+        return this.cardBackRedTexture;
+      }
+    }
+    return this.cardBackDarkTexture;
   }
 
   /**
@@ -652,8 +873,9 @@ export class AceOfShadowsScene extends BaseGameScene {
     if (!this.shadowTexture || !this.shadowLayer || !this.stackShadowLayer || !this.spritesheet) return;
     
     // Floor shadow - in shadowLayer (behind everything)
+    // Anchor at bottom center so shadow sits ON the floor, not extending below
     this.floorShadow = new Sprite(this.shadowTexture);
-    this.floorShadow.anchor.set(0.5);
+    this.floorShadow.anchor.set(0.5, 1);
     this.floorShadow.scale.set(CARD_SCALE);
     this.floorShadow.alpha = 0;
     this.shadowLayer.addChild(this.floorShadow);
@@ -743,17 +965,15 @@ export class AceOfShadowsScene extends BaseGameScene {
    * - floorShadow: Always visible at floor Y, follows card X
    * - stackShadow: Only visible when over a stack, masked by top card
    */
-  private updateDualShadows(cardGameX: number, cardGameY: number): void {
+  private updateDualShadows(cardGameX: number, _cardGameY: number): void {
     if (!this.floorShadow || !this.stackShadow || !this.stackShadowMask) return;
     
     // Floor shadow - always at floor level, follows card X
+    // Same size as card, aligned with bottom of decks
     this.floorShadow.x = cardGameX;
     this.floorShadow.y = this.floorY;
-    
-    // Scale floor shadow based on card height
-    const heightAboveFloor = this.floorY - cardGameY;
-    const floorShadowScale = CARD_SCALE * (1 + heightAboveFloor * 0.001);
-    this.floorShadow.scale.set(Math.max(CARD_SCALE, floorShadowScale));
+    // Keep shadow same size as cards (no dynamic scaling)
+    this.floorShadow.scale.set(CARD_SCALE);
     
     // Stack shadow - only when over a stack (ON the top card surface)
     if (this.stackShadowInfo.visible) {
@@ -806,6 +1026,10 @@ export class AceOfShadowsScene extends BaseGameScene {
   private createCardStacks(): void {
     if (!this.spritesheet) return;
     
+    // Load card back textures
+    this.cardBackRedTexture = this.spritesheet.textures[CARD_BACK_RED] || null;
+    this.cardBackDarkTexture = this.spritesheet.textures[CARD_BACK_DARK] || null;
+    
     // Build the deck with proper poker cards
     const deck = this.buildDeck();
     
@@ -826,9 +1050,9 @@ export class AceOfShadowsScene extends BaseGameScene {
     this.rightContainer.x = 600;
     this.rightContainer.y = centerY;
     
-    // Floor Y = bottom of the stack (where card index 0 sits)
-    // The bottom card is at y=0 in stack coords, so floor = stack.y (the base)
-    this.floorY = centerY;
+    // Floor Y = actual bottom edge of the stack (where shadows should land)
+    // Card centers are at centerY, so floor is at centerY + half card height
+    this.floorY = centerY + this.cardHeight / 2;
     
     // Create both shadow sprites (floor + stack)
     this.createShadowSprites();
@@ -840,7 +1064,7 @@ export class AceOfShadowsScene extends BaseGameScene {
       
       if (!texture) continue;
       
-      const cardContainer = this.createCardWithShadow(texture);
+      const cardContainer = this.createCardWithShadow(texture, textureName);
       
       // Stack cards with offset so edges are visible
       cardContainer.x = 0;
@@ -955,51 +1179,167 @@ export class AceOfShadowsScene extends BaseGameScene {
       this.updateDualShadows(gamePos.x, gamePos.y);
     }
 
-    // Animate to final position (in game coordinates since card is in movingCardLayer)
-    gsap.to(cardContainer, {
-      x: targetGameX,
-      y: targetGameY,
-      duration: this.moveDuration,
-      ease: 'power2.inOut',
-      onUpdate: () => {
-        // Reduce blur as we approach destination
-        const currentX = gsap.getProperty(cardContainer, 'x') as number;
-        const progress = Math.abs(currentX - targetGameX);
-        const total = Math.abs(gamePos.x - targetGameX) || 1;
-        const remaining = progress / total;
-        motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
-        
-        // Update dual shadows (3D effect)
-        if (this.realisticShadows && this.floorShadow) {
-          const cardGameX = gsap.getProperty(cardContainer, 'x') as number;
-          const cardGameY = gsap.getProperty(cardContainer, 'y') as number;
+    // Get card data for texture swapping
+    const cardData = cardContainer as Container & { 
+      faceTexture: Texture; 
+      textureName: string;
+      isShowingFace: boolean;
+    };
+    const cardSprite = this.getCardSprite(cardContainer);
+
+    if (this.animationMode === 'spiral' && cardSprite) {
+      // SPIRAL MODE: Arc + Flip animation
+      // NOTE: Card moves STRAIGHT first, then arc + flip after clearing A deck
+      const midY = Math.min(gamePos.y, targetGameY) - SPIRAL_ARC_HEIGHT;
+      const backTexture = this.getCardBackTexture(cardData.textureName);
+      let flipStarted = false;
+      let hasFlipped = false;
+      let arcStarted = false;
+      
+      // Clearance: card must be more than one card width away from source deck EDGE
+      // Deck edge is at center + cardWidth/2, so total distance from center = 1.5 * cardWidth
+      const leftStackX = this.leftContainer.x;
+      const clearanceDistance = this.cardWidth * 1.5;
+      const flipDuration = 0.4; // Fixed flip duration for responsive feel
+      
+      // Calculate remaining distance after clearance for arc timing
+      const totalXDistance = Math.abs(gamePos.x - targetGameX);
+      const arcDuration = this.moveDuration * 0.6; // Arc takes 60% of remaining time after clearance
+
+      // Create timeline for coordinated animation
+      const tl = gsap.timeline({
+        onUpdate: () => {
+          const currentX = gsap.getProperty(cardContainer, 'x') as number;
+          const currentY = gsap.getProperty(cardContainer, 'y') as number;
           
-          // Calculate which stack (if any) the card is over
-          this.calculateStackShadow(cardGameX, cardGameY, this.leftStack, this.rightStack);
+          // Update motion blur
+          const progress = Math.abs(currentX - targetGameX);
+          const total = totalXDistance || 1;
+          const remaining = progress / total;
+          motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
           
-          // Update both shadows
-          this.updateDualShadows(cardGameX, cardGameY);
+          // Check clearance: card center must be more than 1.5x card width from A deck center
+          const isClear = Math.abs(currentX - leftStackX) > clearanceDistance;
+          
+          // Start arc animation when clear (triggered once)
+          if (!arcStarted && isClear) {
+            arcStarted = true;
+            // Arc: go up then down
+            gsap.to(cardContainer, {
+              y: midY,
+              duration: arcDuration / 2,
+              ease: 'power2.out',
+              onComplete: () => {
+                gsap.to(cardContainer, {
+                  y: targetGameY,
+                  duration: arcDuration / 2,
+                  ease: 'power2.in'
+                });
+              }
+            });
+          }
+          
+          // Start flip animation when clear (triggered once)
+          if (!flipStarted && isClear) {
+            flipStarted = true;
+            // Dynamic flip: scale.x 1 → 0 → 1 (face to back)
+            gsap.to(cardContainer.scale, {
+              x: 0,
+              duration: flipDuration / 2,
+              ease: 'power2.in',
+              onComplete: () => {
+                if (backTexture && !hasFlipped) {
+                  cardSprite.texture = backTexture;
+                  hasFlipped = true;
+                }
+                gsap.to(cardContainer.scale, {
+                  x: CARD_SCALE,
+                  duration: flipDuration / 2,
+                  ease: 'power2.out'
+                });
+              }
+            });
+          }
+          
+          // Update dual shadows
+          if (this.realisticShadows && this.floorShadow) {
+            this.calculateStackShadow(currentX, currentY, this.leftStack, this.rightStack);
+            this.updateDualShadows(currentX, currentY);
+          }
+        },
+        onComplete: () => {
+          // Kill any nested tweens that might still be running (arc/flip)
+          gsap.killTweensOf(cardContainer);
+          gsap.killTweensOf(cardContainer.scale);
+          
+          cardContainer.filters = [];
+          cardContainer.scale.x = CARD_SCALE; // Reset scale
+          cardData.isShowingFace = false; // Now showing back
+          // Ensure back texture is shown (in case flip didn't complete)
+          if (backTexture && !hasFlipped) {
+            cardSprite.texture = backTexture;
+          }
+          
+          // Move to destination
+          this.movingCardLayer!.removeChild(cardContainer);
+          this.rightContainer.addChild(cardContainer);
+          cardContainer.x = 0;
+          cardContainer.y = targetY;
+          
+          this.rightStack.push(cardContainer);
+          this.isAnimating = false;
+          
+          if (attachedShadow) attachedShadow.visible = true;
+          this.hideDualShadows();
         }
-      },
-      onComplete: () => {
-        cardContainer.filters = [];
-        
-        // Move card from movingCardLayer to destination container
-        this.movingCardLayer!.removeChild(cardContainer);
-        this.rightContainer.addChild(cardContainer);
-        cardContainer.x = 0;
-        cardContainer.y = targetY;
-        
-        this.rightStack.push(cardContainer);
-        this.isAnimating = false;
-        
-        // Restore attached shadow, hide dual shadows
-        if (attachedShadow) {
-          attachedShadow.visible = true;
+      });
+
+      // X movement - straight line the entire way
+      tl.to(cardContainer, {
+        x: targetGameX,
+        duration: this.moveDuration,
+        ease: 'power2.inOut'
+      }, 0);
+      
+      // Y stays at initial position - arc is triggered dynamically when clear
+
+    } else {
+      // LINEAR MODE: Straight movement (existing behavior)
+      gsap.to(cardContainer, {
+        x: targetGameX,
+        y: targetGameY,
+        duration: this.moveDuration,
+        ease: 'power2.inOut',
+        onUpdate: () => {
+          const currentX = gsap.getProperty(cardContainer, 'x') as number;
+          const progress = Math.abs(currentX - targetGameX);
+          const total = Math.abs(gamePos.x - targetGameX) || 1;
+          const remaining = progress / total;
+          motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
+          
+          if (this.realisticShadows && this.floorShadow) {
+            const cardGameX = gsap.getProperty(cardContainer, 'x') as number;
+            const cardGameY = gsap.getProperty(cardContainer, 'y') as number;
+            this.calculateStackShadow(cardGameX, cardGameY, this.leftStack, this.rightStack);
+            this.updateDualShadows(cardGameX, cardGameY);
+          }
+        },
+        onComplete: () => {
+          cardContainer.filters = [];
+          
+          this.movingCardLayer!.removeChild(cardContainer);
+          this.rightContainer.addChild(cardContainer);
+          cardContainer.x = 0;
+          cardContainer.y = targetY;
+          
+          this.rightStack.push(cardContainer);
+          this.isAnimating = false;
+          
+          if (attachedShadow) attachedShadow.visible = true;
+          this.hideDualShadows();
         }
-        this.hideDualShadows();
-      }
-    });
+      });
+    }
   }
 
   /**
@@ -1058,70 +1398,194 @@ export class AceOfShadowsScene extends BaseGameScene {
     }
 
     // Track if card has been promoted to top layer
+    // Track z-order promotion and clearance distance
+    // Card must be more than one card width away from source deck EDGE
+    // Deck edge is at center - cardWidth/2, so total distance from center = 1.5 * cardWidth
     let promotedToTop = false;
     const rightStackX = this.rightContainer.x;
-    // Card must be fully clear of B deck (center distance > full card width)
-    const clearanceDistance = this.cardWidth;
+    const clearanceDistance = this.cardWidth * 1.5;
 
-    // Animate to final position (starts in shadowLayer, promotes to movingCardLayer when leaving B)
-    gsap.to(cardContainer, {
-      x: targetGameX,
-      y: targetGameY,
-      duration: this.moveDuration,
-      ease: 'power2.inOut',
-      onUpdate: () => {
-        // Reduce blur as we approach destination
-        const currentX = gsap.getProperty(cardContainer, 'x') as number;
-        const progress = Math.abs(currentX - targetGameX);
-        const total = Math.abs(gamePos.x - targetGameX) || 1;
-        const remaining = progress / total;
-        motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
-        
-        // When card is fully clear of B deck, promote it to top layer (on top of A deck)
-        if (!promotedToTop && Math.abs(currentX - rightStackX) > clearanceDistance) {
-          promotedToTop = true;
+    // Get card data for texture swapping
+    const cardData = cardContainer as Container & { 
+      faceTexture: Texture; 
+      textureName: string;
+      isShowingFace: boolean;
+    };
+    const cardSprite = this.getCardSprite(cardContainer);
+
+    if (this.animationMode === 'spiral' && cardSprite) {
+      // SPIRAL MODE: Straight line first, then Arc + Flip
+      // Card moves in straight line until it clears B deck, then arcs and flips
+      const midY = Math.min(gamePos.y, targetGameY) - SPIRAL_ARC_HEIGHT;
+      let flipStarted = false;
+      let hasFlipped = false;
+      let arcStarted = false;
+      
+      const flipDuration = 0.4; // Fixed flip duration for responsive feel
+      
+      // Calculate remaining distance after clearance for arc timing
+      const totalXDistance = Math.abs(gamePos.x - targetGameX);
+      const arcDuration = this.moveDuration * 0.6; // Arc takes 60% of remaining time after clearance
+      
+      const tl = gsap.timeline({
+        onUpdate: () => {
+          const currentX = gsap.getProperty(cardContainer, 'x') as number;
           const currentY = gsap.getProperty(cardContainer, 'y') as number;
-          this.shadowLayer!.removeChild(cardContainer);
-          this.movingCardLayer!.addChild(cardContainer);
-          cardContainer.x = currentX;
-          cardContainer.y = currentY;
-        }
-        
-        // Update dual shadows (3D effect)
-        if (this.realisticShadows && this.floorShadow) {
-          const cardGameX = gsap.getProperty(cardContainer, 'x') as number;
-          const cardGameY = gsap.getProperty(cardContainer, 'y') as number;
           
-          // Calculate which stack (if any) the card is over
-          this.calculateStackShadow(cardGameX, cardGameY, this.leftStack, this.rightStack);
+          // Update motion blur
+          const progress = Math.abs(currentX - targetGameX);
+          const total = totalXDistance || 1;
+          const remaining = progress / total;
+          motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
           
-          // Update both shadows
-          this.updateDualShadows(cardGameX, cardGameY);
+          // Check clearance: card center must be more than 1.5x card width from B deck center
+          const isClear = Math.abs(currentX - rightStackX) > clearanceDistance;
+          
+          // Promote to top layer when clear of B deck
+          if (!promotedToTop && isClear) {
+            promotedToTop = true;
+            this.shadowLayer!.removeChild(cardContainer);
+            this.movingCardLayer!.addChild(cardContainer);
+            cardContainer.x = currentX;
+            cardContainer.y = currentY;
+          }
+          
+          // Start arc animation when clear (triggered once)
+          if (!arcStarted && isClear) {
+            arcStarted = true;
+            // Arc: go up then down
+            gsap.to(cardContainer, {
+              y: midY,
+              duration: arcDuration / 2,
+              ease: 'power2.out',
+              onComplete: () => {
+                gsap.to(cardContainer, {
+                  y: targetGameY,
+                  duration: arcDuration / 2,
+                  ease: 'power2.in'
+                });
+              }
+            });
+          }
+          
+          // Start flip animation when clear (triggered once)
+          if (!flipStarted && isClear) {
+            flipStarted = true;
+            // Dynamic flip: scale.x 1 → 0 → 1 (back to face)
+            gsap.to(cardContainer.scale, {
+              x: 0,
+              duration: flipDuration / 2,
+              ease: 'power2.in',
+              onComplete: () => {
+                if (!hasFlipped) {
+                  cardSprite.texture = cardData.faceTexture;
+                  hasFlipped = true;
+                }
+                gsap.to(cardContainer.scale, {
+                  x: CARD_SCALE,
+                  duration: flipDuration / 2,
+                  ease: 'power2.out'
+                });
+              }
+            });
+          }
+          
+          // Update dual shadows
+          if (this.realisticShadows && this.floorShadow) {
+            this.calculateStackShadow(currentX, currentY, this.leftStack, this.rightStack);
+            this.updateDualShadows(currentX, currentY);
+          }
+        },
+        onComplete: () => {
+          // Kill any nested tweens that might still be running (arc/flip)
+          gsap.killTweensOf(cardContainer);
+          gsap.killTweensOf(cardContainer.scale);
+          
+          cardContainer.filters = [];
+          cardContainer.scale.x = CARD_SCALE;
+          cardData.isShowingFace = true; // Now showing face
+          // Ensure face texture is shown (in case flip didn't complete)
+          if (!hasFlipped) {
+            cardSprite.texture = cardData.faceTexture;
+          }
+          
+          // Move to destination
+          if (promotedToTop) {
+            this.movingCardLayer!.removeChild(cardContainer);
+          } else {
+            this.shadowLayer!.removeChild(cardContainer);
+          }
+          this.leftContainer.addChild(cardContainer);
+          cardContainer.x = 0;
+          cardContainer.y = targetY;
+          
+          this.leftStack.push(cardContainer);
+          this.isAnimating = false;
+          
+          if (attachedShadow) attachedShadow.visible = true;
+          this.hideDualShadows();
         }
-      },
-      onComplete: () => {
-        cardContainer.filters = [];
-        
-        // Move card from current layer to destination container
-        if (promotedToTop) {
-          this.movingCardLayer!.removeChild(cardContainer);
-        } else {
-          this.shadowLayer!.removeChild(cardContainer);
+      });
+
+      // X movement - straight line the entire way
+      tl.to(cardContainer, {
+        x: targetGameX,
+        duration: this.moveDuration,
+        ease: 'power2.inOut'
+      }, 0);
+      
+      // Y stays at initial position - arc is triggered dynamically when clear
+
+    } else {
+      // LINEAR MODE: Straight movement
+      gsap.to(cardContainer, {
+        x: targetGameX,
+        y: targetGameY,
+        duration: this.moveDuration,
+        ease: 'power2.inOut',
+        onUpdate: () => {
+          const currentX = gsap.getProperty(cardContainer, 'x') as number;
+          const progress = Math.abs(currentX - targetGameX);
+          const total = Math.abs(gamePos.x - targetGameX) || 1;
+          const remaining = progress / total;
+          motionBlur.velocity = new Point(normalizedX * remaining, normalizedY * remaining);
+          
+          if (!promotedToTop && Math.abs(currentX - rightStackX) > clearanceDistance) {
+            promotedToTop = true;
+            const currentY = gsap.getProperty(cardContainer, 'y') as number;
+            this.shadowLayer!.removeChild(cardContainer);
+            this.movingCardLayer!.addChild(cardContainer);
+            cardContainer.x = currentX;
+            cardContainer.y = currentY;
+          }
+          
+          if (this.realisticShadows && this.floorShadow) {
+            const cardGameX = gsap.getProperty(cardContainer, 'x') as number;
+            const cardGameY = gsap.getProperty(cardContainer, 'y') as number;
+            this.calculateStackShadow(cardGameX, cardGameY, this.leftStack, this.rightStack);
+            this.updateDualShadows(cardGameX, cardGameY);
+          }
+        },
+        onComplete: () => {
+          cardContainer.filters = [];
+          
+          if (promotedToTop) {
+            this.movingCardLayer!.removeChild(cardContainer);
+          } else {
+            this.shadowLayer!.removeChild(cardContainer);
+          }
+          this.leftContainer.addChild(cardContainer);
+          cardContainer.x = 0;
+          cardContainer.y = targetY;
+          
+          this.leftStack.push(cardContainer);
+          this.isAnimating = false;
+          
+          if (attachedShadow) attachedShadow.visible = true;
+          this.hideDualShadows();
         }
-        this.leftContainer.addChild(cardContainer);
-        cardContainer.x = 0;
-        cardContainer.y = targetY;
-        
-        this.leftStack.push(cardContainer);
-        this.isAnimating = false;
-        
-        // Restore attached shadow, hide dual shadows
-        if (attachedShadow) {
-          attachedShadow.visible = true;
-        }
-        this.hideDualShadows();
-      }
-    });
+      });
+    }
 
     // Animate remaining cards in right stack to "fall down" (fill the gap)
     this.rightStack.forEach((card, index) => {
@@ -1185,6 +1649,9 @@ export class AceOfShadowsScene extends BaseGameScene {
   onStop(): void {
     super.onStop();
     
+    // FIRST: Kill ALL GSAP tweens globally to prevent animation on destroyed objects
+    gsap.globalTimeline.clear();
+    
     // Clean up based on current mode
     if (this.mode === 'literal') {
       // Clean up interval
@@ -1195,10 +1662,6 @@ export class AceOfShadowsScene extends BaseGameScene {
       
       // Remove slider UI
       this.removeSliderUI();
-      
-      // Kill any ongoing GSAP animations
-      gsap.killTweensOf(this.leftContainer.children);
-      gsap.killTweensOf(this.rightContainer.children);
     }
     
     // Reset mode for next entry

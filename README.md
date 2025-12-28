@@ -204,6 +204,18 @@ All UI dimensions are defined in `src/config/design.ts`:
 
 ---
 
+How it was made:
+
+
+Cards from https://oxxonpic.itch.io/ultimate-minimalist-card-asset-set
+
+Tool used to split cards https://tools.spriters-resource.com/#sprite-splitter
+![Spriters resource tool](screenshots/spriters-resource-tool.png)
+Tool used to join cards and background in one spritesheet and create the json https://free-tex-packer.com/app/
+![Free texture packer](screenshots/free-texture-packer.png)
+---
+
+
 ## 📄 License
 
 MIT License
