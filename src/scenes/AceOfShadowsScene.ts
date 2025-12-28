@@ -3,6 +3,7 @@ import { MotionBlurFilter } from '@pixi/filter-motion-blur';
 import type { Application } from '../core/Application';
 import { BaseGameScene } from './BaseGameScene';
 import { Button } from '../components/Button';
+import { Slider } from '../components/Slider';
 import gsap from 'gsap';
 
 /** Scene mode */
@@ -95,8 +96,8 @@ export class AceOfShadowsScene extends BaseGameScene {
   /** Current motion blur strength - controlled by slider */
   private motionBlurStrength = DEFAULT_MOTION_BLUR;
 
-  /** Slider UI container element */
-  private sliderContainer: HTMLDivElement | null = null;
+  /** Slider UI container (PixiJS) */
+  private sliderContainer: Container | null = null;
 
   /** Current scene mode */
   private mode: SceneMode = 'selection';
@@ -333,126 +334,93 @@ export class AceOfShadowsScene extends BaseGameScene {
   }
 
   /**
-   * Create HTML slider UI for controlling animation speed
+   * Create PixiJS slider UI for controlling animation speed
+   * Added to gameContainer so it scales with the responsive layout
    */
   private createSliderUI(): void {
-    // Create container for sliders
-    this.sliderContainer = document.createElement('div');
-    this.sliderContainer.id = 'ace-of-shadows-controls';
-    this.sliderContainer.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 30px;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 15px 25px;
-      border-radius: 12px;
-      font-family: Arial, sans-serif;
-      z-index: 1000;
-    `;
+    this.sliderContainer = new Container();
+    
+    // Background panel
+    const panelWidth = 450;
+    const panelHeight = 60;
+    const panel = new Graphics();
+    panel.beginFill(0x000000, 0.7);
+    panel.drawRoundedRect(-panelWidth / 2, -panelHeight / 2, panelWidth, panelHeight, 12);
+    panel.endFill();
+    this.sliderContainer.addChild(panel);
 
-    // Interval slider
-    const intervalControl = this.createSlider({
+    // Slider layout: 3 sliders of 100px each, evenly distributed
+    const sliderWidth = 100;
+    const sliderSpacing = 140; // Distance between slider centers
+    const sliderY = 5;
+
+    // Interval slider (left)
+    const intervalSlider = new Slider({
       label: 'Interval',
       value: this.moveInterval,
       min: SLIDER_MIN,
       max: SLIDER_MAX,
       step: SLIDER_STEP,
       unit: 's',
+      width: sliderWidth,
       onChange: (value) => {
         this.moveInterval = value;
         this.restartAnimation();
       }
     });
+    intervalSlider.x = -sliderSpacing - sliderWidth / 2;
+    intervalSlider.y = sliderY;
+    this.sliderContainer.addChild(intervalSlider);
 
-    // Duration slider
-    const durationControl = this.createSlider({
+    // Duration slider (center)
+    const durationSlider = new Slider({
       label: 'Duration',
       value: this.moveDuration,
       min: SLIDER_MIN,
       max: SLIDER_MAX,
       step: SLIDER_STEP,
       unit: 's',
+      width: sliderWidth,
       onChange: (value) => {
         this.moveDuration = value;
       }
     });
+    durationSlider.x = -sliderWidth / 2;
+    durationSlider.y = sliderY;
+    this.sliderContainer.addChild(durationSlider);
 
-    // Motion blur slider
-    const blurControl = this.createSlider({
-      label: 'Motion Blur',
+    // Motion blur slider (right)
+    const blurSlider = new Slider({
+      label: 'Blur',
       value: this.motionBlurStrength,
       min: BLUR_SLIDER_MIN,
       max: BLUR_SLIDER_MAX,
       step: BLUR_SLIDER_STEP,
       unit: '',
       decimals: 0,
+      width: sliderWidth,
       onChange: (value) => {
         this.motionBlurStrength = value;
       }
     });
+    blurSlider.x = sliderSpacing - sliderWidth / 2;
+    blurSlider.y = sliderY;
+    this.sliderContainer.addChild(blurSlider);
 
-    this.sliderContainer.appendChild(intervalControl);
-    this.sliderContainer.appendChild(durationControl);
-    this.sliderContainer.appendChild(blurControl);
-    document.body.appendChild(this.sliderContainer);
+    // Position at bottom of game area (design coordinates)
+    this.sliderContainer.x = 400; // Center of 800px design width
+    this.sliderContainer.y = 550; // Near bottom of 600px design height
+
+    // Add to gameContainer so it scales with responsive layout
+    this.gameContainer.addChild(this.sliderContainer);
   }
 
   /**
-   * Create a single slider control
-   */
-  private createSlider(options: {
-    label: string;
-    value: number;
-    min: number;
-    max: number;
-    step: number;
-    unit: string;
-    decimals?: number;
-    onChange: (value: number) => void;
-  }): HTMLDivElement {
-    const { label, value, min, max, step, unit, decimals = 1, onChange } = options;
-    
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display: flex; flex-direction: column; align-items: center;';
-
-    const formatValue = (v: number) => `${label}: ${v.toFixed(decimals)}${unit}`;
-
-    const labelEl = document.createElement('label');
-    labelEl.style.cssText = 'color: white; font-size: 12px; margin-bottom: 5px;';
-    labelEl.textContent = formatValue(value);
-
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = String(min);
-    slider.max = String(max);
-    slider.step = String(step);
-    slider.value = String(value);
-    slider.style.cssText = `
-      width: 120px;
-      cursor: pointer;
-      accent-color: #FF671D;
-    `;
-
-    slider.addEventListener('input', () => {
-      const newValue = parseFloat(slider.value);
-      labelEl.textContent = formatValue(newValue);
-      onChange(newValue);
-    });
-
-    wrapper.appendChild(labelEl);
-    wrapper.appendChild(slider);
-    return wrapper;
-  }
-
-  /**
-   * Remove slider UI from DOM
+   * Remove slider UI
    */
   private removeSliderUI(): void {
     if (this.sliderContainer) {
-      this.sliderContainer.remove();
+      this.sliderContainer.destroy({ children: true });
       this.sliderContainer = null;
     }
   }
