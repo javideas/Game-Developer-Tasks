@@ -1,8 +1,8 @@
 {
-  "name": "bestgames-assignment",
+  "name": "bestgames-game-developer-tasks",
   "description": "BESTGAMES Game Developer Tasks - 3 interactive demos",
   "author": "Javier Moreno",
-  "homepage": "https://javideas.github.io/Game-Developer-Tasks/",
+  "homepage": "https://javideas.github.io/bestgames-game-developer-tasks/",
   "private": true,
   "version": "1.0.0",
   "type": "module",
