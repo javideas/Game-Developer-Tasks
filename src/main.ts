@@ -30,3 +30,22 @@ const mainMenu = new MainMenuScene(app, {
 app.scenes.start(mainMenu);
 
 console.log('Game Developer Tasks initialized');
+
+/**
+ * Vite HMR (Hot Module Replacement) Cleanup
+ * 
+ * During development, Vite hot-reloads modules on file save. Without proper
+ * cleanup, the old PixiJS application remains in memory, causing:
+ * - WebGL context accumulation (browsers limit active contexts)
+ * - "WebGL context was lost" errors
+ * - Memory leaks from orphaned event listeners
+ * 
+ * This disposal handler destroys the previous app instance before the new
+ * module loads. The `import.meta.hot` check ensures this code is tree-shaken
+ * from production builds.
+ */
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    app.destroy();
+  });
+}
