@@ -1,5 +1,5 @@
 /**
- * Game Developer Tasks - Entry Point
+ * BESTGAMES - Game Developer Tasks
  * 
  * A unified PixiJS application showcasing 3 interactive demos:
  * 1. Ace of Shadows - Card stack animation
@@ -12,24 +12,39 @@
 import './style.css';
 import { Application } from './core';
 import { MainMenuScene } from './scenes/MainMenuScene';
+import { AceOfShadowsScene } from './scenes/AceOfShadowsScene';
+import { MagicWordsScene } from './scenes/MagicWordsScene';
+import { PhoenixFlameScene } from './scenes/PhoenixFlameScene';
 
 // Initialize application
 const app = new Application();
 
+/**
+ * Navigate to the main menu
+ */
+function goToMainMenu(): void {
+  const mainMenu = new MainMenuScene(app, {
+    onGameSelect: (key) => {
+      switch (key) {
+        case 'ace':
+          app.scenes.start(new AceOfShadowsScene(app, goToMainMenu));
+          break;
+        case 'magic':
+          app.scenes.start(new MagicWordsScene(app, goToMainMenu));
+          break;
+        case 'phoenix':
+          app.scenes.start(new PhoenixFlameScene(app, goToMainMenu));
+          break;
+      }
+    },
+  });
+  app.scenes.start(mainMenu);
+}
+
 // Start with main menu
-const mainMenu = new MainMenuScene(app, {
-  onGameSelect: (key) => {
-    console.log(`Starting game: ${key}`);
-    // TODO: Switch to game scene based on key
-    // app.scenes.start(new AceOfShadowsScene(app));
-    // app.scenes.start(new MagicWordsScene(app));
-    // app.scenes.start(new PhoenixFlameScene(app));
-  },
-});
+goToMainMenu();
 
-app.scenes.start(mainMenu);
-
-console.log('Game Developer Tasks initialized');
+console.log('BESTGAMES - Game Developer Tasks initialized');
 
 /**
  * Vite HMR (Hot Module Replacement) Cleanup

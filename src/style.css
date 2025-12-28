@@ -20,11 +20,11 @@ canvas {
   height: 100%;
 }
 
-/* FPS Counter */
+/* FPS Counter - Top Right Corner */
 #fps-counter {
   position: fixed;
   top: 10px;
-  left: 10px;
+  right: 10px;
   font-family: 'Courier New', monospace;
   font-size: 14px;
   font-weight: bold;

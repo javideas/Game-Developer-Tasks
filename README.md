@@ -55,26 +55,28 @@ Open `http://localhost:5173` in your browser.
 
 ```
 src/
-├── main.ts                      # Entry point (~30 lines)
-├── style.css                    # Global styles (fullscreen canvas, FPS counter)
+├── main.ts                      # Entry point, scene navigation
+├── style.css                    # Global styles (fullscreen canvas, FPS)
 │
 ├── config/
-│   └── design.ts                # Design constants (dimensions, colors, spacing)
+│   └── design.ts                # Design constants (dimensions, colors)
 │
 ├── core/
 │   ├── index.ts                 # Barrel exports
 │   ├── Application.ts           # PixiJS wrapper, resize handling
 │   ├── SceneManager.ts          # Scene lifecycle (start, stop, update)
-│   └── FPSCounter.ts            # FPS display (HTML overlay)
+│   └── FPSCounter.ts            # FPS display (HTML overlay, top-right)
 │
 ├── components/
+│   ├── Button.ts                # Reusable button with hover effects
 │   └── MenuTile.ts              # Game thumbnail tile with hover overlay
 │
 ├── scenes/
+│   ├── BaseGameScene.ts         # Abstract base class for game scenes
 │   ├── MainMenuScene.ts         # Main menu with game tiles
-│   ├── AceOfShadowsScene.ts     # Task 1 (TODO)
-│   ├── MagicWordsScene.ts       # Task 2 (TODO)
-│   └── PhoenixFlameScene.ts     # Task 3 (TODO)
+│   ├── AceOfShadowsScene.ts     # Task 1: Card stack animation
+│   ├── MagicWordsScene.ts       # Task 2: Text + emoji system
+│   └── PhoenixFlameScene.ts     # Task 3: Particle fire effect
 │
 └── assets/
     ├── fonts/
@@ -96,7 +98,7 @@ src/
 │  │                     Application                         │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │   │
 │  │  │ PixiJS App  │  │ FPSCounter  │  │  SceneManager   │  │   │
-│  │  │  (canvas)   │  │ (HTML DOM)  │  │  (lifecycle)    │  │   │
+│  │  │  (canvas)   │  │ (top-right) │  │  (lifecycle)    │  │   │
 │  │  └─────────────┘  └─────────────┘  └────────┬────────┘  │   │
 │  └─────────────────────────────────────────────┼───────────┘   │
 │                                                │               │
@@ -111,29 +113,31 @@ src/
 │  │  • destroy(): void                                      │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                │
-│         ┌──────────────┬──────────────┬──────────────┐         │
-│         ▼              ▼              ▼              ▼         │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐   │
-│  │ MainMenu   │ │ AceOf      │ │ Magic      │ │ Phoenix    │   │
-│  │ Scene      │ │ Shadows    │ │ Words      │ │ Flame      │   │
-│  │            │ │ Scene      │ │ Scene      │ │ Scene      │   │
-│  └──────┬─────┘ └────────────┘ └────────────┘ └────────────┘   │
-│         │                                                      │
-│         ▼                                                      │
+│         ┌──────────────────────────────────────────┐           │
+│         ▼                                          ▼           │
+│  ┌──────────────┐                    ┌─────────────────────┐   │
+│  │ MainMenu     │                    │  BaseGameScene      │   │
+│  │ Scene        │                    │  (abstract)         │   │
+│  │              │                    │  • gameContainer    │   │
+│  │ • MenuTiles  │                    │  • back button      │   │
+│  │ • Title bar  │                    │  • browser title    │   │
+│  └──────────────┘                    └──────────┬──────────┘   │
+│                                                 │              │
+│                          ┌──────────────────────┼──────────┐   │
+│                          ▼                      ▼          ▼   │
+│                   ┌────────────┐ ┌────────────┐ ┌────────────┐ │
+│                   │ AceOf      │ │ Magic      │ │ Phoenix    │ │
+│                   │ Shadows    │ │ Words      │ │ Flame      │ │
+│                   │ Scene      │ │ Scene      │ │ Scene      │ │
+│                   └────────────┘ └────────────┘ └────────────┘ │
+│                                                                │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │                     Components                          │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │   │
 │  │  │  MenuTile   │  │   Button    │  │  (future...)    │  │   │
-│  │  │  (hover,    │  │             │  │                 │  │   │
+│  │  │  (hover,    │  │  (reusable) │  │                 │  │   │
 │  │  │   click)    │  │             │  │                 │  │   │
 │  │  └─────────────┘  └─────────────┘  └─────────────────┘  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   config/design.ts                      │   │
-│  │  • DESIGN constants (padding, tile size, fonts)         │   │
-│  │  • BRAND_ORANGE (0xF7941D)                              │   │
-│  │  • ACCENT_ORANGE (#FF671D)                              │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -143,11 +147,16 @@ src/
 ## 🔄 Scene Flow
 
 ```
-┌──────────────┐    onGameSelect()    ┌──────────────────┐
-│   MainMenu   │ ──────────────────▶ │    Game Scene    │
-│    Scene     │                      │   (Ace/Magic/    │
-│              │◀──────────────────  │     Phoenix)     │
-└──────────────┘    Back to Menu      └──────────────────┘
+┌──────────────────┐   click tile    ┌──────────────────────────┐
+│                  │ ──────────────▶│                          │
+│    MainMenu      │                 │   Game Scene             │
+│    Scene         │                 │   (fullscreen)           │
+│                  │◀────────────── │                          │
+└──────────────────┘   ← Menu btn    └──────────────────────────┘
+                                              │
+                                              ▼
+                                     Browser tab updates
+                                     to game name
 ```
 
 ---
@@ -158,9 +167,25 @@ src/
 |-------|------|----------------|
 | `Application` | `core/Application.ts` | PixiJS init, resize, FPS, scenes |
 | `SceneManager` | `core/SceneManager.ts` | Scene lifecycle management |
-| `FPSCounter` | `core/FPSCounter.ts` | FPS display as HTML overlay |
+| `FPSCounter` | `core/FPSCounter.ts` | FPS display (top-right corner) |
+| `BaseGameScene` | `scenes/BaseGameScene.ts` | Abstract base for game scenes |
 | `MainMenuScene` | `scenes/MainMenuScene.ts` | Menu UI with game tiles |
 | `MenuTile` | `components/MenuTile.ts` | Clickable thumbnail with hover |
+| `Button` | `components/Button.ts` | Reusable button component |
+
+---
+
+## 🎮 Game Scene Features
+
+Each game scene (extending `BaseGameScene`) provides:
+
+| Feature | Description |
+|---------|-------------|
+| **Fullscreen layout** | Content scales to fit, background extends to edges |
+| **Browser tab title** | Updates to game name, restores on exit |
+| **Back button** | Floating top-left, semi-transparent |
+| **Responsive scaling** | `gameContainer` scales like main menu |
+| **Lifecycle hooks** | `buildContent()`, `onResize()`, `requestLayout()` |
 
 ---
 
@@ -185,8 +210,8 @@ MIT License
 
 Copyright 2025 JAVIER MORENO
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
