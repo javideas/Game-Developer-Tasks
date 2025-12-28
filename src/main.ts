@@ -2,7 +2,7 @@ import './style.css';
 import { Application, Text, TextStyle, Graphics, Container, Sprite, Rectangle } from 'pixi.js';
 
 /**
- * SOFTGAMES Assignment - Main Entry Point
+ * Game Developer Tasks - Main Entry Point
  * 
  * A unified PixiJS application with 3 interactive demos:
  * 1. Ace of Shadows - Card stack animation
@@ -99,7 +99,7 @@ const menuTilesData = [
   { key: 'phoenix', label: 'Phoenix Flame', thumbnailUrl: phoenixThumbUrl },
 ] as const;
 
-// SOFTGAMES-like "CLICK TO PLAY" icon (orange gamepad)
+// BESTGAMES-like "CLICK TO PLAY" icon (orange gamepad)
 const clickToPlayIconSvg = `<svg width="28" height="16" viewBox="0 0 28 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.2352 8.88234C12.2352 9.1305 12.0422 9.32351 11.7941 9.32351H9.147V11.9706C9.147 12.2187 8.95399 12.4117 8.70583 12.4117H6.94112C6.69296 12.4117 6.49994 12.2187 6.49994 11.9706V9.32351H3.85288C3.60472 9.32351 3.41171 9.1305 3.41171 8.88234V7.11763C3.41171 6.86947 3.60472 6.67646 3.85288 6.67646H6.49994V4.0294C6.49994 3.78124 6.69296 3.58822 6.94112 3.58822H8.70583C8.95399 3.58822 9.147 3.78124 9.147 4.0294V6.67646H11.7941C12.0422 6.67646 12.2352 6.86947 12.2352 7.11763V8.88234ZM20.1764 9.76469C20.1764 10.7436 19.3906 11.5294 18.4117 11.5294C17.4328 11.5294 16.647 10.7436 16.647 9.76469C16.647 8.78583 17.4328 7.99998 18.4117 7.99998C19.3906 7.99998 20.1764 8.78583 20.1764 9.76469ZM23.7058 6.23528C23.7058 7.21414 22.92 7.99998 21.9411 7.99998C20.9623 7.99998 20.1764 7.21414 20.1764 6.23528C20.1764 5.25642 20.9623 4.47057 21.9411 4.47057C22.92 4.47057 23.7058 5.25642 23.7058 6.23528ZM27.2352 7.99998C27.2352 4.09833 24.0781 0.941162 20.1764 0.941162H7.82347C3.92182 0.941162 0.764648 4.09833 0.764648 7.99998C0.764648 11.9016 3.92182 15.0588 7.82347 15.0588C9.61575 15.0588 11.2426 14.3833 12.4834 13.2941H15.5165C16.7573 14.3833 18.3841 15.0588 20.1764 15.0588C24.0781 15.0588 27.2352 11.9016 27.2352 7.99998Z" fill="#FF671D"/></svg>`;
 const clickToPlayIconUrl = `data:image/svg+xml,${encodeURIComponent(clickToPlayIconSvg)}`;
 
@@ -233,7 +233,7 @@ function buildMenuUI(): void {
   
   let currentY = 0;
 
-  // ---- Title (SOFTGAMES style: orange box with white text) ----
+  // ---- Title (BESTGAMES style: orange box with white text) ----
   const titleContainer = new Container();
 
   const titleStyle = new TextStyle({
@@ -244,14 +244,14 @@ function buildMenuUI(): void {
     letterSpacing: 2,
   });
 
-  title = new Text('SOFTGAMES', titleStyle);
+  title = new Text('BESTGAMES', titleStyle);
   title.anchor.set(0.5);
 
   // Orange background box
   const titlePaddingX = 20;
   const titlePaddingY = 10;
   const titleBg = new Graphics();
-  titleBg.beginFill(0xF7941D); // SOFTGAMES orange
+  titleBg.beginFill(0xF7941D); // BESTGAMES orange
   titleBg.drawRect(
     -title.width / 2 - titlePaddingX,
     -title.height / 2 - titlePaddingY,
@@ -273,20 +273,19 @@ function buildMenuUI(): void {
     fill: '#666666',
   });
   
-  subtitle = new Text('Game Developer Assignment by Javier Moreno', subtitleStyle);
+  subtitle = new Text('Game Developer Tasks by Javier Moreno', subtitleStyle);
   subtitle.anchor.set(0.5, 0);
   subtitle.x = 0;
   subtitle.y = currentY;
   menuContainer.addChild(subtitle);
   currentY += subtitle.height + DESIGN.subtitle.marginBottom;
   
-  // ---- Tiles (SOFTGAMES-like miniatures) ----
+  // ---- Tiles (Games miniatures) ----
   const gap = DESIGN.tile.gap;
   const w = DESIGN.tile.width;
   const h = DESIGN.tile.height;
 
   // Two-column layout if there's room; otherwise one column.
-  // (We rebuild the UI on resize, so this is responsive.)
   const canDoTwoCols = app.screen.width >= 900;
   const cols = canDoTwoCols ? 2 : 1;
   const colX = cols === 2 ? [-w / 2 - gap / 2, w / 2 + gap / 2] : [0];
@@ -375,5 +374,5 @@ window.addEventListener('resize', onResize);
 buildMenuUI();
 layoutMenu();
 
-console.log('🎮 SOFTGAMES Assignment initialized');
-console.log(`📐 Screen: ${app.screen.width}x${app.screen.height}`);
+console.log('Game Developer Tasks initialized');
+console.log(`Screen: ${app.screen.width}x${app.screen.height}`);

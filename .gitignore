@@ -1,18 +1,11 @@
 # Private files (interview prep, personal notes)
-/Docs
+/Docs/
 
 # Dependencies
 node_modules/
 
-# Build outputs
+# Build output
 dist/
-dist-js/
 
-# IDE & OS
-.DS_Store
-.vscode/
+# Logs
 *.log
-
-# Environment
-.env
-.env.local
