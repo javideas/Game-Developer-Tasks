@@ -83,7 +83,6 @@ export class Slider extends Container {
    */
   private drawSlider(): void {
     const { width } = this.options;
-    const halfHandle = this.handleRadius;
 
     // Track background
     this.track.clear();

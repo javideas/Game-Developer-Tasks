@@ -115,10 +115,32 @@ export class MainMenuScene implements Scene {
     // ---- Game Tiles ----
     const { width: w, height: h, gap } = DESIGN.tile;
 
-    // Two-column layout if there's room
-    const canDoTwoCols = this.app.width >= 900;
-    const cols = canDoTwoCols ? 2 : 1;
-    const colX = cols === 2 ? [-w / 2 - gap / 2, w / 2 + gap / 2] : [0];
+    const screenW = this.app.width;
+    const screenH = this.app.height;
+    const isLandscape = screenW > screenH;
+    const isSmallHeight = screenH < 600;
+
+    // Layout modes:
+    // - Landscape on mobile/tablet (small height): horizontal row (3 columns)
+    // - Wide desktop (>= 900px): 2 columns
+    // - Portrait/narrow: 1 column (vertical stack)
+    let cols: number;
+    if (isLandscape && isSmallHeight) {
+      // Mobile/tablet landscape: arrange all tiles in a horizontal row
+      cols = MENU_TILES.length;
+    } else if (screenW >= 900) {
+      cols = 2;
+    } else {
+      cols = 1;
+    }
+
+    // Calculate column X positions centered around 0
+    const colX: number[] = [];
+    const totalWidth = cols * w + (cols - 1) * gap;
+    const startX = -totalWidth / 2 + w / 2;
+    for (let i = 0; i < cols; i++) {
+      colX.push(startX + i * (w + gap));
+    }
 
     const lastIndex = MENU_TILES.length - 1;
     const hasOddLastRow = cols === 2 && MENU_TILES.length % 2 === 1;
@@ -133,8 +155,8 @@ export class MainMenuScene implements Scene {
         },
       });
 
-      const row = cols === 2 ? Math.floor(idx / 2) : idx;
-      const col = cols === 2 ? idx % 2 : 0;
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
 
       // Center last tile if odd number in 2-column layout
       if (hasOddLastRow && idx === lastIndex) {

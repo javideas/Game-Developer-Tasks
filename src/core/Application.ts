@@ -56,16 +56,20 @@ export class Application {
 
   /**
    * Screen width (shortcut)
+   * Falls back to window.innerWidth if PixiJS dimensions aren't ready
    */
   get width(): number {
-    return this.pixi.screen.width;
+    const pixiWidth = this.pixi.screen.width || this.pixi.renderer.width;
+    return pixiWidth > 0 ? pixiWidth : window.innerWidth;
   }
 
   /**
    * Screen height (shortcut)
+   * Falls back to window.innerHeight if PixiJS dimensions aren't ready
    */
   get height(): number {
-    return this.pixi.screen.height;
+    const pixiHeight = this.pixi.screen.height || this.pixi.renderer.height;
+    return pixiHeight > 0 ? pixiHeight : window.innerHeight;
   }
 
   /**

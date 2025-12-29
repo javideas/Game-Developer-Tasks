@@ -59,7 +59,12 @@ export class SceneManager {
     this.currentScene = scene;
     this.pixi.stage.addChild(scene.container);
     scene.onStart?.();
-    scene.onResize?.();
+    
+    // Trigger resize after a frame to ensure dimensions are ready
+    // This fixes initial centering issues on scene entry
+    requestAnimationFrame(() => {
+      scene.onResize?.();
+    });
   }
 
   /**
