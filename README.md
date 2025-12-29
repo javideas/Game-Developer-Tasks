@@ -12,11 +12,11 @@ A unified PixiJS application featuring three interactive demos, built as a techn
 
 ## 🕹️ The Three Tasks
 
-| # | Name | Description |
-|---|------|-------------|
-| 1 | **Ace of Shadows** | 144 animated cards moving between two stacks with 3D shadows |
-| 2 | **Magic Words** | Text + emoji rendering system with API integration |
-| 3 | **Phoenix Flame** | Particle-based fire effect (max 10 sprites) |
+| # | Name | Description | Status |
+|---|------|-------------|--------|
+| 1 | **Ace of Shadows** | 144 animated cards moving between two stacks with 3D shadows | ✅ Complete |
+| 2 | **Magic Words** | Visual novel dialogue with inline emojis and API integration | ✅ Complete |
+| 3 | **Phoenix Flame** | Particle-based fire effect (max 10 sprites) | 🚧 Coming soon |
 
 All tasks are accessible via an in-game menu with FPS counter.
 
@@ -59,9 +59,10 @@ src/
 ├── style.css                        # Global styles (fullscreen canvas, FPS)
 │
 ├── config/
-│   ├── design.ts                    # Design constants (dimensions, colors)
+│   ├── design.ts                    # Main menu UI constants
 │   ├── sharedSettings.ts            # Cross-task responsive breakpoints
-│   └── aceOfShadowsSettings.ts      # Ace of Shadows configuration
+│   ├── aceOfShadowsSettings.ts      # Task 1: Ace of Shadows config
+│   └── magicWordsSettings.ts        # Task 2: Magic Words config
 │
 ├── core/
 │   ├── index.ts                     # Barrel exports
@@ -74,29 +75,39 @@ src/
 │   ├── MenuTile.ts                  # Game thumbnail tile with hover overlay
 │   ├── Slider.ts                    # Value slider control
 │   ├── Toggle.ts                    # Boolean toggle control
+│   ├── Dropdown.ts                  # Dropdown menu control
 │   ├── SettingsPanel.ts             # Cell-based settings layout
 │   ├── GameSettingsPanel.ts         # Abstract base for game settings UI
-│   └── ModeSelectionPanel.ts        # Mode selection UI component
+│   ├── ModeSelectionPanel.ts        # Mode selection UI component
+│   ├── RichText.ts                  # Text with inline emoji images
+│   └── SpeechBubble.ts              # 9-slice speech bubble component
 │
 ├── scenes/
 │   ├── BaseGameScene.ts             # Abstract base class for game scenes
 │   ├── MainMenuScene.ts             # Main menu with game tiles
 │   ├── AceOfShadowsScene.ts         # Task 1: Scene coordinator
-│   ├── MagicWordsScene.ts           # Task 2: Text + emoji system
+│   ├── MagicWordsScene.ts           # Task 2: Scene coordinator
 │   └── PhoenixFlameScene.ts         # Task 3: Particle fire effect
 │
 ├── modes/
 │   ├── GameMode.ts                  # Interface for game mode implementations
-│   └── aceOfShadows/
+│   ├── aceOfShadows/
+│   │   ├── index.ts                 # Barrel exports
+│   │   ├── AceOfShadowsModeLiteral.ts   # Literal mode implementation
+│   │   ├── AceOfShadowsModeCreative.ts  # Creative mode placeholder
+│   │   └── LiteralModeSettingsPanel.ts  # Literal mode settings UI
+│   │
+│   └── magicWords/
 │       ├── index.ts                 # Barrel exports
-│       ├── AceOfShadowsModeLiteral.ts   # Literal mode implementation
-│       ├── AceOfShadowsModeCreative.ts  # Creative mode implementation
-│       └── LiteralModeSettingsPanel.ts  # Literal mode settings UI
+│       ├── MagicWordsModeLiteral.ts     # Visual novel dialogue system
+│       ├── MagicWordsModeCreative.ts    # Creative mode placeholder
+│       └── MagicWordsSettingsPanel.ts   # Dialogue settings UI
 │
 └── assets/
     ├── fonts/
     └── sprites/
         ├── thumbnails/              # Game preview images
+        ├── dialog/                  # Speech bubble assets
         └── ultimate-minimalist-card-asset/  # Card spritesheet
 ```
 
@@ -106,60 +117,60 @@ src/
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                              main.ts                                     │
-│                           (Entry Point)                                  │
-│                                 │                                        │
-│                                 ▼                                        │
+│                              main.ts                                    │
+│                           (Entry Point)                                 │
+│                                 │                                       │
+│                                 ▼                                       │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │                         Application                                │  │
+│  │                         Application                               │  │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐    │  │
 │  │  │ PixiJS App  │  │ FPSCounter  │  │     SceneManager        │    │  │
 │  │  │  (canvas)   │  │ (top-right) │  │ (lifecycle management)  │    │  │
 │  │  └─────────────┘  └─────────────┘  └───────────┬─────────────┘    │  │
 │  └────────────────────────────────────────────────┼──────────────────┘  │
-│                                                   │                      │
-│                                                   ▼                      │
+│                                                   │                     │
+│                                                   ▼                     │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │                       Scene Interface                              │  │
-│  │  • container: Container     • onStart(): Promise<void>             │  │
-│  │  • onStop(): void           • onResize(): void                     │  │
-│  │  • onUpdate(delta): void    • destroy(): void                      │  │
+│  │                       Scene Interface                             │  │
+│  │  • container: Container     • onStart(): Promise<void>            │  │
+│  │  • onStop(): void           • onResize(): void                    │  │
+│  │  • onUpdate(delta): void    • destroy(): void                     │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
-│                                                                          │
+│                                                                         │
 │              ┌─────────────────────┬────────────────────┐               │
 │              ▼                     ▼                    ▼               │
-│     ┌──────────────┐    ┌─────────────────────┐  ┌──────────────┐      │
-│     │  MainMenu    │    │   BaseGameScene     │  │ (more scenes)│      │
-│     │   Scene      │    │     (abstract)      │  │              │      │
-│     │              │    │ • gameContainer     │  │              │      │
-│     │ • MenuTiles  │    │ • responsive layout │  │              │      │
-│     │ • Title bar  │    │ • device detection  │  │              │      │
-│     └──────────────┘    │ • back button       │  └──────────────┘      │
+│     ┌──────────────┐    ┌─────────────────────┐  ┌──────────────┐       │
+│     │  MainMenu    │    │   BaseGameScene     │  │ (more scenes)│       │
+│     │   Scene      │    │     (abstract)      │  │              │       │
+│     │              │    │ • gameContainer     │  │              │       │
+│     │ • MenuTiles  │    │ • responsive layout │  │              │       │
+│     │ • Title bar  │    │ • device detection  │  │              │       │
+│     └──────────────┘    │ • back button       │  └──────────────┘       │
 │                         │ • spritesheet cache │                         │
 │                         └──────────┬──────────┘                         │
-│                                    │                                     │
+│                                    │                                    │
 │              ┌─────────────────────┼─────────────────────┐              │
 │              ▼                     ▼                     ▼              │
-│     ┌────────────────┐  ┌────────────────┐  ┌────────────────┐         │
-│     │ AceOfShadows   │  │  MagicWords    │  │ PhoenixFlame   │         │
-│     │    Scene       │  │    Scene       │  │    Scene       │         │
-│     │  (coordinator) │  │                │  │                │         │
-│     └───────┬────────┘  └────────────────┘  └────────────────┘         │
-│             │                                                            │
-│             ▼                                                            │
+│     ┌────────────────┐  ┌────────────────┐  ┌────────────────┐          │
+│     │ AceOfShadows   │  │  MagicWords    │  │ PhoenixFlame   │          │
+│     │    Scene       │  │    Scene       │  │    Scene       │          │
+│     │  (coordinator) │  │                │  │                │          │
+│     └───────┬────────┘  └────────────────┘  └────────────────┘          │
+│             │                                                           │
+│             ▼                                                           │
 │     ┌───────────────────────────────────────────────────────┐           │
-│     │                  Mode Composition                      │           │
+│     │                  Mode Composition                     │           │
 │     │  ┌─────────────────┐    ┌─────────────────────────┐   │           │
 │     │  │   GameMode      │    │  GameModeContext        │   │           │
-│     │  │   Interface     │◀───│  (shared resources)     │   │           │
+│     │  │   Interface     │◀──│  (shared resources)     │   │           │
 │     │  │ • start()       │    │  • container            │   │           │
 │     │  │ • stop()        │    │  • spritesheet          │   │           │
 │     │  │ • onResize()    │    │  • gameContainer        │   │           │
 │     │  │ • onDeviceState │    │  • requestLayout()      │   │           │
 │     │  └────────┬────────┘    └─────────────────────────┘   │           │
-│     │           │                                            │           │
-│     │     ┌─────┴─────┐                                      │           │
-│     │     ▼           ▼                                      │           │
+│     │           │                                           │           │
+│     │     ┌─────┴─────┐                                     │           │
+│     │     ▼           ▼                                     │           │
 │     │ ┌─────────┐ ┌─────────┐                               │           │
 │     │ │ Literal │ │Creative │                               │           │
 │     │ │  Mode   │ │  Mode   │                               │           │
@@ -239,6 +250,86 @@ Moving Card
 
 ---
 
+## 💬 Magic Words - Deep Dive
+
+### Visual Novel Dialogue System
+
+Task 2 implements a visual novel-style dialogue system that fetches data from an API and renders text with inline emoji images.
+
+```
+MagicWordsScene (coordinator, ~220 lines)
+├── Loads nothing upfront (API-driven)
+├── Displays mode selection UI
+├── Creates GameModeContext for mode instances
+└── Forwards lifecycle events to active mode
+
+MagicWordsModeLiteral (~850 lines)
+├── API data fetching (dialogue, emojis, avatars)
+├── Visual novel layout (avatars + speech bubble)
+├── RichText component for inline emojis
+├── Click-to-advance dialogue system
+└── Settings panel (delegates to MagicWordsSettingsPanel)
+
+MagicWordsModeCreative (~70 lines)
+└── Placeholder for creative implementation
+```
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| `RichText` | Parses `{emoji}` placeholders and renders inline images |
+| `SpeechBubble` | 9-slice scalable bubble with configurable tail direction |
+| `MagicWordsSettingsPanel` | Dialog box size, avatar size, Y offset, presets |
+
+### API Integration
+
+```typescript
+// Fetches from API endpoint
+const data = await fetch(API_URL).then(r => r.json());
+// { dialogue: [...], emojies: [...], avatars: [...] }
+
+// Dynamic avatar generation for missing speakers
+generateAvatarUrl(name, color, position) // → DiceBear Personas URL
+```
+
+### Dialogue Flow
+
+```
+┌─────────────────────────────────────────────────┐
+│                    Screen                       │
+│                                                 │
+│  ┌────────┐                        ┌────────┐   │
+│  │ Avatar │                        │ Avatar │   │
+│  │ (left) │                        │(right) │   │
+│  │        │                        │        │   │
+│  └────────┘                        └────────┘   │
+│                                                 │
+│  ┌─────────────────────────────────────────┐    │
+│  │ [Speaker Name]                          │    │
+│  │                                         │    │
+│  │ "Dialogue text with {emoji} inline..."  │    │
+│  │                                     ▼   │    │
+│  └─────────────────────────────────────────┘    │
+│                                                 │
+│  Click anywhere to advance                      │
+└─────────────────────────────────────────────────┘
+```
+
+### Settings Persistence
+
+Like Ace of Shadows, Magic Words supports "Keep Settings" toggle:
+
+```typescript
+// Config exports
+getDefaultSettings()      // Default values
+getPreservedSettings()    // Saved values (or null)
+saveSettings(partial)     // Persist to singleton
+clearPreservedSettings()  // Reset
+```
+
+---
+
 ## 📦 Key Components
 
 ### Core Classes
@@ -263,9 +354,12 @@ Moving Card
 | Class | File | Responsibility |
 |-------|------|----------------|
 | `GameMode` | `modes/GameMode.ts` | Interface for mode implementations |
-| `AceOfShadowsModeLiteral` | `modes/aceOfShadows/` | Literal mode game logic |
+| `AceOfShadowsModeLiteral` | `modes/aceOfShadows/` | Card animation game logic |
 | `AceOfShadowsModeCreative` | `modes/aceOfShadows/` | Creative mode (placeholder) |
-| `LiteralModeSettingsPanel` | `modes/aceOfShadows/` | Literal mode settings UI |
+| `LiteralModeSettingsPanel` | `modes/aceOfShadows/` | Ace of Shadows settings UI |
+| `MagicWordsModeLiteral` | `modes/magicWords/` | Visual novel dialogue system |
+| `MagicWordsModeCreative` | `modes/magicWords/` | Creative mode (placeholder) |
+| `MagicWordsSettingsPanel` | `modes/magicWords/` | Magic Words settings UI |
 
 ### UI Components
 
@@ -274,6 +368,9 @@ Moving Card
 | `Button` | `components/Button.ts` | Reusable button with hover |
 | `Slider` | `components/Slider.ts` | Value slider control |
 | `Toggle` | `components/Toggle.ts` | Boolean toggle control |
+| `Dropdown` | `components/Dropdown.ts` | Dropdown menu control |
+| `RichText` | `components/RichText.ts` | Text with inline emoji images |
+| `SpeechBubble` | `components/SpeechBubble.ts` | 9-slice speech bubble |
 | `GameSettingsPanel` | `components/GameSettingsPanel.ts` | Abstract settings panel base |
 | `ModeSelectionPanel` | `components/ModeSelectionPanel.ts` | Mode selection UI |
 
@@ -283,10 +380,10 @@ Moving Card
 
 ```
 ┌──────────────────┐   click tile    ┌──────────────────────────┐
-│                  │ ──────────────▶ │                          │
+│                  │ ──────────────▶│                          │
 │    MainMenu      │                 │   Game Scene             │
 │    Scene         │                 │   (fullscreen)           │
-│                  │ ◀────────────── │                          │
+│                  │ ◀──────────────│                          │
 └──────────────────┘   ← Menu btn    └────────────┬─────────────┘
                                                   │
                                                   ▼
@@ -330,7 +427,7 @@ Configuration is split across three files for separation of concerns:
 | `SCENE_LAYOUT.screenPadding` | 200px L/R, 40px T/B | Desktop screen padding |
 | `SCENE_LAYOUT.maxScale` | 2.25 | Max responsive scale |
 
-### Task-Specific (`config/aceOfShadowsSettings.ts`)
+### Task 1 Config (`config/aceOfShadowsSettings.ts`)
 
 | Category | Settings |
 |----------|----------|
@@ -339,6 +436,19 @@ Configuration is split across three files for separation of concerns:
 | Spiral Mode | `arcHeightA: 80`, `arcHeightB: 120` |
 | Shadow | `offsetX: 3`, `offsetY: 3`, `alpha: 0.35` |
 | Panel UI | Cell widths, padding, row positions |
+
+### Task 2 Config (`config/magicWordsSettings.ts`)
+
+| Category | Settings |
+|----------|----------|
+| API | `API_URL` for dialogue data |
+| Bubble | `bgColor`, `borderColor`, `radius`, `padding`, `height` |
+| Name Badge | `fontSize`, `speakerColors` map, `marginX/Y` |
+| Avatar | `size: 500`, `minSize: 200`, `maxSize: 500`, `yOffset` |
+| Dialog Box | `width: 800`, `minWidth: 500`, `maxWidth: 1100` |
+| Presets | `A` (default), `B` (compact) with `label` |
+| Panel UI | `sliderWidth`, `paddingX`, `gap`, `topOffset` |
+| Persistence | `getPreservedSettings()`, `saveSettings()` |
 
 ---
 
