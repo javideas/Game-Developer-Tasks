@@ -1,3 +1,5 @@
+![main menu view](screenshots/main-menu-view.png)
+
 # BESTGAMES - Game Developer Tasks
 
 A unified PixiJS application featuring three interactive demos, built as a technical assessment for Senior HTML5 Game Developer.
@@ -146,7 +148,7 @@ src/
 │     │ • MenuTiles  │    │ • responsive layout │  │              │       │
 │     │ • Title bar  │    │ • device detection  │  │              │       │
 │     └──────────────┘    │ • back button       │  └──────────────┘       │
-│                         │ • spritesheet cache │                         │
+│                         │ • auto-rotation     │                         │
 │                         └──────────┬──────────┘                         │
 │                                    │                                    │
 │              ┌─────────────────────┼─────────────────────┐              │
@@ -181,7 +183,11 @@ src/
 
 ---
 
-## 🎯 Ace of Shadows - Deep Dive
+## 🎯 Ace of Shadows
+
+![ace-of-shadows-mode-selection](screenshots/ace-of-shadows-mode-selection.png)
+
+![ace-of-shadows-mode-literal](screenshots/ace-of-shadows-mode-literal.png)
 
 ### Mode Composition Pattern
 
@@ -250,7 +256,9 @@ Moving Card
 
 ---
 
-## 💬 Magic Words - Deep Dive
+## 💬 Magic Words
+
+![magic-words-mode-literal](screenshots/magic-words-mode-literal.png)
 
 ### Visual Novel Dialogue System
 
@@ -261,14 +269,26 @@ MagicWordsScene (coordinator, ~220 lines)
 ├── Loads nothing upfront (API-driven)
 ├── Displays mode selection UI
 ├── Creates GameModeContext for mode instances
+├── preferredOrientation: 'landscape' (auto-rotates on portrait phones)
 └── Forwards lifecycle events to active mode
 
-MagicWordsModeLiteral (~850 lines)
+MagicWordsModeLiteral (~900 lines)
 ├── API data fetching (dialogue, emojis, avatars)
 ├── Visual novel layout (avatars + speech bubble)
 ├── RichText component for inline emojis
 ├── Click-to-advance dialogue system
+├── Avatar bounce animations (appear/disappear/active speaker)
+├── Dynamic avatar generation (DiceBear API for unknown speakers)
 └── Settings panel (delegates to MagicWordsSettingsPanel)
+
+MagicWordsSettingsPanel (~450 lines)
+├── Extends GameSettingsPanel
+├── Dialog box width, avatar size, Y offset sliders
+├── Preset dropdown (A/B configurations)
+├── Fake lag slider (debug loading screen)
+├── Keep Settings toggle with persistence
+├── Physical portrait UI multiplier (1.3×)
+└── Responsive layout (vertical on portrait, horizontal on landscape)
 
 MagicWordsModeCreative (~70 lines)
 └── Placeholder for creative implementation
@@ -280,7 +300,17 @@ MagicWordsModeCreative (~70 lines)
 |-----------|---------|
 | `RichText` | Parses `{emoji}` placeholders and renders inline images |
 | `SpeechBubble` | 9-slice scalable bubble with configurable tail direction |
-| `MagicWordsSettingsPanel` | Dialog box size, avatar size, Y offset, presets |
+| `MagicWordsSettingsPanel` | Dialog/avatar size, Y offset, presets, fake lag |
+
+### Responsive Behavior
+
+| Device State | Settings Layout | UI Scale |
+|--------------|-----------------|----------|
+| Desktop/Tablet | 2 rows horizontal | 1.0× |
+| Phone Landscape | 2 rows horizontal | 1.0× |
+| Phone Portrait (physical) | Single column vertical | 1.3× |
+
+Note: "Physical portrait" means the device is physically held in portrait, even though game content is rotated to landscape.
 
 ### API Integration
 
@@ -328,6 +358,15 @@ saveSettings(partial)     // Persist to singleton
 clearPreservedSettings()  // Reset
 ```
 
+### Auto-Rotation for Portrait Devices
+
+Magic Words is designed for landscape viewing. When played on a phone in portrait mode, the game content auto-rotates 90° while keeping UI overlays (back button, FPS counter) pinned to physical screen corners:
+
+![mode landscape](screenshots/landscape-mode.png)
+![mode portrait](screenshots/portrait-mode.png)
+
+The settings panel also scales up by 1.3× in physical portrait mode for easier touch interaction.
+
 ---
 
 ## 📦 Key Components
@@ -338,7 +377,7 @@ clearPreservedSettings()  // Reset
 |-------|------|----------------|
 | `Application` | `core/Application.ts` | PixiJS init, resize, FPS, scenes |
 | `SceneManager` | `core/SceneManager.ts` | Scene lifecycle management |
-| `BaseGameScene` | `scenes/BaseGameScene.ts` | Abstract base with responsive layout |
+| `BaseGameScene` | `scenes/BaseGameScene.ts` | Abstract base with responsive layout, auto-rotation |
 
 ### Scene Classes
 
@@ -346,7 +385,7 @@ clearPreservedSettings()  // Reset
 |-------|------|----------------|
 | `MainMenuScene` | `scenes/MainMenuScene.ts` | Menu UI with game tiles |
 | `AceOfShadowsScene` | `scenes/AceOfShadowsScene.ts` | Task 1 coordinator |
-| `MagicWordsScene` | `scenes/MagicWordsScene.ts` | Task 2 (coming soon) |
+| `MagicWordsScene` | `scenes/MagicWordsScene.ts` | Task 2 coordinator, auto-rotates to landscape |
 | `PhoenixFlameScene` | `scenes/PhoenixFlameScene.ts` | Task 3 (coming soon) |
 
 ### Mode Classes
@@ -366,9 +405,9 @@ clearPreservedSettings()  // Reset
 | Class | File | Responsibility |
 |-------|------|----------------|
 | `Button` | `components/Button.ts` | Reusable button with hover |
-| `Slider` | `components/Slider.ts` | Value slider control |
-| `Toggle` | `components/Toggle.ts` | Boolean toggle control |
-| `Dropdown` | `components/Dropdown.ts` | Dropdown menu control |
+| `Slider` | `components/Slider.ts` | Value slider, rotation-aware input |
+| `Toggle` | `components/Toggle.ts` | Boolean toggle, horizontal layout |
+| `Dropdown` | `components/Dropdown.ts` | Dropdown menu, z-order handling |
 | `RichText` | `components/RichText.ts` | Text with inline emoji images |
 | `SpeechBubble` | `components/SpeechBubble.ts` | 9-slice speech bubble |
 | `GameSettingsPanel` | `components/GameSettingsPanel.ts` | Abstract settings panel base |
@@ -426,6 +465,18 @@ Configuration is split across three files for separation of concerns:
 | `SCENE_LAYOUT.screenPaddingPhone` | 24px | Phone screen edge padding |
 | `SCENE_LAYOUT.screenPadding` | 200px L/R, 40px T/B | Desktop screen padding |
 | `SCENE_LAYOUT.maxScale` | 2.25 | Max responsive scale |
+
+### Auto-Rotation (`BaseGameScene`)
+
+Games can specify a preferred orientation. When the device doesn't match, content auto-rotates:
+
+| Option | Behavior |
+|--------|----------|
+| `preferredOrientation: 'landscape'` | Rotates content 90° when device is in portrait |
+| `preferredOrientation: 'portrait'` | Rotates content 90° when device is in landscape |
+| `preferredOrientation: 'any'` | No auto-rotation (default) |
+
+UI elements (back button, FPS counter) remain pinned to physical screen corners.
 
 ### Task 1 Config (`config/aceOfShadowsSettings.ts`)
 
