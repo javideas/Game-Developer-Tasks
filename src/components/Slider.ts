@@ -160,12 +160,12 @@ export class Slider extends Container {
 
   private onDragStart = (event: any): void => {
     this.isDragging = true;
-    this.updateValueFromPosition(event.global.x);
+    this.updateValueFromPosition(event.global.x, event.global.y);
   };
 
   private onDragMove = (event: any): void => {
     if (!this.isDragging) return;
-    this.updateValueFromPosition(event.global.x);
+    this.updateValueFromPosition(event.global.x, event.global.y);
   };
 
   private onDragEnd = (): void => {
@@ -175,11 +175,12 @@ export class Slider extends Container {
   /**
    * Update value based on pointer position
    */
-  private updateValueFromPosition(globalX: number): void {
+  private updateValueFromPosition(globalX: number, globalY: number): void {
     const { width, min, max, step } = this.options;
 
     // Convert global position to local
-    const localPos = this.toLocal({ x: globalX, y: 0 });
+    // Important: use both x/y so this works when the slider (or parent scene) is rotated.
+    const localPos = this.toLocal({ x: globalX, y: globalY });
     
     // Calculate ratio (clamped to 0-1)
     let ratio = Math.max(0, Math.min(1, localPos.x / width));
