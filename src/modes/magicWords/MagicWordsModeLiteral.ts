@@ -5,16 +5,19 @@ import type { DeviceState } from '../../scenes/BaseGameScene';
 import { RichText } from '../../components/RichText';
 import { SpeechBubble } from '../../components/SpeechBubble';
 import { MagicWordsSettingsPanel } from './MagicWordsSettingsPanel';
+import type { GameSettingsPanelConfig, SettingsPanelContext } from '../../components/GameSettingsPanel';
 import dialogBubbleImage from '../../assets/sprites/dialog/dialog-bubble.png';
 import {
   API_URL,
   DIALOGUE_CONFIG,
+  SETTINGS_PANEL_UI,
   getDefaultSettings,
   getPreservedSettings,
   type MagicWordsData,
   type DialogueLine,
   type AvatarDef,
 } from '../../config/magicWordsSettings';
+import { SCENE_LAYOUT } from '../../config/sharedSettings';
 
 /**
  * MagicWordsModeLiteral
@@ -23,7 +26,6 @@ import {
  * - Full screen layout with avatars
  * - Speech bubble at bottom with name badge
  * - Click/touch anywhere to advance
- * - Skip button to jump to end
  */
 export class MagicWordsModeLiteral implements GameMode {
   private context: GameModeContext;
@@ -54,7 +56,6 @@ export class MagicWordsModeLiteral implements GameMode {
   private speechBubble: SpeechBubble | null = null;
   private currentRichText: RichText | null = null;
   private nameBadge: Container | null = null;
-  private skipButton: Container | null = null;
   private advanceIndicator: Text | null = null;
   private settingsPanel: MagicWordsSettingsPanel | null = null;
   private endText: Text | null = null;
@@ -77,6 +78,9 @@ export class MagicWordsModeLiteral implements GameMode {
   /** Is dialogue complete (for restart) */
   private isComplete = false;
   
+  /** Fake lag for debugging loading screen (seconds) */
+  private fakeLag = 0;
+  
   /** Design width/height for layout */
   private designWidth = 1280;
   private designHeight = 720;
@@ -91,6 +95,7 @@ export class MagicWordsModeLiteral implements GameMode {
     this.dialogBoxWidth = preserved?.dialogBoxWidth ?? defaults.dialogBoxWidth;
     this.avatarSize = preserved?.avatarSize ?? defaults.avatarSize;
     this.avatarYOffset = preserved?.avatarYOffset ?? defaults.avatarYOffset;
+    this.fakeLag = preserved?.fakeLag ?? defaults.fakeLag;
   }
   
   // ============================================================
@@ -123,6 +128,12 @@ export class MagicWordsModeLiteral implements GameMode {
       await this.loadAvatars(allAvatars);
       this.buildEmojiMap(data);
       this.dialogueData = data.dialogue;
+      
+      // Apply fake lag if set (for debugging loading screen)
+      if (this.fakeLag > 0) {
+        await new Promise(resolve => setTimeout(resolve, this.fakeLag * 1000));
+      }
+      
       this.hideLoading();
       this.buildUI();
       this.showDialogue(0);
@@ -155,18 +166,19 @@ export class MagicWordsModeLiteral implements GameMode {
     this.currentSpeakerIsLeft = true;
     this.currentRichText = null;
     this.nameBadge = null;
-    this.skipButton = null;
     this.advanceIndicator = null;
     this.settingsPanel = null;
     this.endText = null;
   }
   
   onResize(): void {
-    // Responsive layout will be handled by BaseGameScene scaling
+    // Forward to settings panel (it does its own scale-to-fit logic)
+    this.settingsPanel?.onResize();
   }
   
   onDeviceStateChange(_newState: DeviceState, _oldState: DeviceState): void {
-    // Could adjust layout for different orientations
+    // Forward to settings panel so it can rebuild for portrait/landscape
+    this.settingsPanel?.onDeviceStateChange?.(_newState);
   }
   
   // ============================================================
@@ -278,20 +290,68 @@ export class MagicWordsModeLiteral implements GameMode {
   private showLoading(): void {
     if (!this.content) return;
     
-    const style = new TextStyle({
+    const { bubble } = DIALOGUE_CONFIG;
+    
+    // Calculate bubble center Y position (where the bubble will appear)
+    const bubbleY = this.designHeight - bubble.height - bubble.bottomMargin;
+    const bubbleCenterY = bubbleY + bubble.height / 2;
+    
+    // Create loading container for all loading elements
+    const loadingContainer = new Container();
+    loadingContainer.name = 'loading';
+    this.content.addChild(loadingContainer);
+    
+    // Main message - theatrical style
+    const mainStyle = new TextStyle({
+      fontFamily: 'Georgia, serif',
+      fontSize: 42,
+      fill: '#f5e6c8',
+      align: 'center',
+      fontStyle: 'italic',
+    });
+    
+    const mainText = new Text('The show is about to start', mainStyle);
+    mainText.resolution = 2;
+    mainText.anchor.set(0.5);
+    mainText.x = this.designWidth / 2;
+    mainText.y = bubbleCenterY - 15;
+    loadingContainer.addChild(mainText);
+    
+    // Subtitle with loading dots
+    const subStyle = new TextStyle({
       fontFamily: 'Arial, sans-serif',
-      fontSize: 28,
-      fill: '#ffffff',
+      fontSize: 18,
+      fill: '#888888',
       align: 'center',
     });
     
-    const loading = new Text('Loading...', style);
-    loading.resolution = 2;
-    loading.anchor.set(0.5);
-    loading.x = this.designWidth / 2;
-    loading.y = this.designHeight / 2;
-    loading.name = 'loading';
-    this.content.addChild(loading);
+    const subText = new Text('Loading dialogue...', subStyle);
+    subText.resolution = 2;
+    subText.anchor.set(0.5);
+    subText.x = this.designWidth / 2;
+    subText.y = bubbleCenterY + 30;
+    loadingContainer.addChild(subText);
+    
+    // Fade in animation
+    loadingContainer.alpha = 0;
+    gsap.to(loadingContainer, {
+      alpha: 1,
+      duration: 0.5,
+      ease: 'power2.out',
+    });
+    
+    // Pulsing animation on main text
+    gsap.to(mainText, {
+      alpha: 0.6,
+      duration: 1.2,
+      ease: 'power1.inOut',
+      yoyo: true,
+      repeat: -1,
+    });
+    
+    // Show settings panel immediately during loading
+    this.settingsPanel = this.createSettingsPanel();
+    this.content.addChild(this.settingsPanel);
   }
   
   private hideLoading(): void {
@@ -408,13 +468,11 @@ export class MagicWordsModeLiteral implements GameMode {
     this.nameBadge = new Container();
     this.bubbleContainer.addChild(this.nameBadge);
     
-    // Skip button
-    this.skipButton = this.createSkipButton();
-    this.content.addChild(this.skipButton);
-    
-    // Settings panel
-    this.settingsPanel = this.createSettingsPanel();
-    this.content.addChild(this.settingsPanel);
+    // Settings panel (only create if not already created during loading)
+    if (!this.settingsPanel) {
+      this.settingsPanel = this.createSettingsPanel();
+      this.content.addChild(this.settingsPanel);
+    }
     
     // Click anywhere to advance
     this.content.eventMode = 'static';
@@ -426,15 +484,42 @@ export class MagicWordsModeLiteral implements GameMode {
   private createSettingsPanel(): MagicWordsSettingsPanel {
     const defaults = getDefaultSettings();
     const preserved = getPreservedSettings();
+    const ui = SETTINGS_PANEL_UI;
+    
+    // GameSettingsPanelConfig - same pattern as Ace of Shadows
+    const config: GameSettingsPanelConfig = {
+      paddingX: ui.paddingX,
+      paddingY: ui.paddingTop,
+      radius: ui.radius,
+      backgroundAlpha: ui.backgroundAlpha,
+      backgroundColor: 0x333333,  // Dark grey background
+      designX: this.designWidth / 2,  // Center horizontally (panel is centered at this X)
+      designY: ui.topOffset + 180,    // Center Y of panel (top + ~half panel height)
+    };
+    
+    // SettingsPanelContext - provides responsive behavior hooks
+    const context: SettingsPanelContext = {
+      getDeviceState: () => this.context.getDeviceState(),
+      getScreenSize: () => this.context.getScreenSize(),
+      getGameContainerScale: () => this.context.gameContainer.scale.x,
+      getGameContainerY: () => this.context.gameContainer.y,
+      getContentBottomY: () => {
+        // For Magic Words, content bottom is near the bubble
+        const { bubble } = DIALOGUE_CONFIG;
+        return this.designHeight - bubble.height - bubble.bottomMargin;
+      },
+    };
     
     return new MagicWordsSettingsPanel(
-      this.designWidth,
+      config,
+      context,
       {
         dialogBoxWidth: this.dialogBoxWidth,
         avatarSize: this.avatarSize,
         avatarYOffset: this.avatarYOffset,
         preset: preserved?.preset ?? defaults.preset,
         keepSettings: preserved?.keepSettings ?? defaults.keepSettings,
+        fakeLag: this.fakeLag,
       },
       {
         onDialogBoxChange: (value) => {
@@ -448,6 +533,9 @@ export class MagicWordsModeLiteral implements GameMode {
         onYOffsetChange: (value) => {
           this.avatarYOffset = value;
           this.updateAvatarYPosition();
+        },
+        onFakeLagChange: (value) => {
+          this.fakeLag = value;
         },
       }
     );
@@ -534,37 +622,6 @@ export class MagicWordsModeLiteral implements GameMode {
     // Avatars stay fixed - bubble can overlap them
   }
   
-  private createSkipButton(): Container {
-    const { skip } = DIALOGUE_CONFIG;
-    const container = new Container();
-    
-    const text = new Text('Skip >>', new TextStyle({
-      fontFamily: 'Arial, sans-serif',
-      fontSize: skip.fontSize,
-      fill: skip.color,
-      fontWeight: 'bold',
-    }));
-    text.resolution = 2;
-    text.anchor.set(1, 0);
-    
-    container.addChild(text);
-    container.x = this.designWidth - skip.padding;
-    container.y = skip.padding;
-    
-    container.eventMode = 'static';
-    container.cursor = 'pointer';
-    container.on('pointerdown', (e) => {
-      e.stopPropagation();
-      this.skipToEnd();
-    });
-    
-    // Hover effect
-    container.on('pointerover', () => { text.alpha = 0.7; });
-    container.on('pointerout', () => { text.alpha = 1; });
-    
-    return container;
-  }
-  
   // ============================================================
   // Dialogue Display
   // ============================================================
@@ -602,9 +659,14 @@ export class MagicWordsModeLiteral implements GameMode {
     // Update name badge
     this.nameBadge.removeChildren();
     
+    // Check if we're on phone for font scaling (1.5x bigger)
+    const { width: screenW, height: screenH } = this.context.getScreenSize();
+    const isPhone = Math.min(screenW, screenH) < SCENE_LAYOUT.phoneBreakpoint;
+    const badgeFontSize = isPhone ? Math.round(nameBadge.fontSize * 1.5) : nameBadge.fontSize;
+    
     const nameText = new Text(line.name, new TextStyle({
       fontFamily: 'Arial, sans-serif',
-      fontSize: nameBadge.fontSize,
+      fontSize: badgeFontSize,
       fill: nameBadge.textColor,
       fontWeight: 'bold',
     }));
@@ -618,6 +680,7 @@ export class MagicWordsModeLiteral implements GameMode {
     const speakerColor = nameBadge.speakerColors[line.name] ?? nameBadge.bgColor;
     
     const badgeBg = new Graphics();
+    badgeBg.lineStyle(nameBadge.borderWidth ?? 2, nameBadge.borderColor ?? 0x1f1f1f, 1);
     badgeBg.beginFill(speakerColor);
     badgeBg.drawRoundedRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, nameBadge.radius);
     badgeBg.endFill();
@@ -635,8 +698,9 @@ export class MagicWordsModeLiteral implements GameMode {
     this.nameBadge.y = nameBadge.marginY;
     
     // Create rich text for dialogue
-    // Extra margin to ensure text stays well inside the bubble visual bounds
-    const textMargin = 20;
+    // Text max width must account for bubble padding and extra safety margin
+    // Keep consistent font size regardless of device (bubble is already scaled)
+    const textMargin = 40; // Extra safety margin to keep text inside bubble
     const textMaxWidth = this.currentBubbleWidth - (bubble.paddingX * 2) - textMargin;
     
     this.currentRichText = new RichText({
@@ -800,11 +864,6 @@ export class MagicWordsModeLiteral implements GameMode {
     // Reset and start from beginning
     this.currentIndex = 0;
     this.showDialogue(0);
-  }
-  
-  private skipToEnd(): void {
-    // Jump to last message
-    this.showDialogue(this.dialogueData.length - 1);
   }
   
   private onDialogueComplete(): void {

@@ -38,6 +38,7 @@ export class MagicWordsScene extends BaseGameScene {
       onBack,
       contentPadding: SCENE_LAYOUT.screenPadding,
       maxScale: SCENE_LAYOUT.maxScale,
+      preferredOrientation: 'landscape', // Auto-rotate content when device is portrait
     });
   }
 

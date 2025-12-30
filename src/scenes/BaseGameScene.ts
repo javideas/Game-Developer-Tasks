@@ -19,6 +19,13 @@ export interface BaseGameSceneOptions {
   contentPadding?: { left: number; right: number; top: number; bottom: number };
   /** Optional max scale clamp for responsive layout (defaults to 1.5) */
   maxScale?: number;
+  /** 
+   * Preferred orientation for this scene.
+   * - 'landscape': auto-rotate content when device is in portrait
+   * - 'portrait': auto-rotate content when device is in landscape
+   * - 'any' (default): no rotation, adapt to current orientation
+   */
+  preferredOrientation?: 'landscape' | 'portrait' | 'any';
 }
 
 /** Design constants for game scenes */
@@ -105,13 +112,21 @@ export abstract class BaseGameScene implements Scene {
     height: SCENE_DESIGN.contentHeight,
   };
 
+  /** Wrapper container for orientation rotation (contains gameContainer) */
+  private rotationWrapper: Container;
+  
+  /** Whether content is currently rotated for orientation preference */
+  private isRotatedForOrientation = false;
+
   constructor(app: Application, options: BaseGameSceneOptions) {
     this.app = app;
     this.options = options;
     this.originalTitle = document.title;
     
     this.container = new Container();
+    this.rotationWrapper = new Container();
     this.gameContainer = new Container();
+    this.rotationWrapper.addChild(this.gameContainer);
   }
 
   /**
@@ -139,12 +154,19 @@ export abstract class BaseGameScene implements Scene {
    * Get current device state for responsive layout decisions.
    * Uses CSS pixels (window.innerWidth/Height) for consistent detection.
    * Single source of truth for phone/tablet/desktop detection.
+   * 
+   * When content is rotated for orientation preference, this returns the
+   * "effective" state (e.g., phoneLandscape even if device is in portrait).
    */
   protected getDeviceState(): DeviceState {
     const screenW = window.innerWidth;
     const screenH = window.innerHeight;
     const isPhone = Math.min(screenW, screenH) < SCENE_LAYOUT.phoneBreakpoint;
-    const isPortrait = screenH > screenW;
+    
+    // If content is rotated, flip the portrait/landscape detection
+    const isPortrait = this.isRotatedForOrientation 
+      ? screenW > screenH  // Inverted when rotated
+      : screenH > screenW;
     
     if (isPhone && isPortrait) return 'phonePortrait';
     if (isPhone && !isPortrait) return 'phoneLandscape';
@@ -169,7 +191,7 @@ export abstract class BaseGameScene implements Scene {
     // Create sub-mode back button
     this.subModeBackButton = new Button({
       label: '← Back',
-      width: 100,
+      width: 80,
       height: 36,
       backgroundColor: 0x000000,
       fontSize: 14,
@@ -177,8 +199,6 @@ export abstract class BaseGameScene implements Scene {
       onClick: onBack,
     });
     this.subModeBackButton.alpha = 0.4;
-    this.subModeBackButton.x = 70;
-    this.subModeBackButton.y = 30;
 
     // Hover effects
     this.subModeBackButton.on('pointerover', () => {
@@ -189,6 +209,9 @@ export abstract class BaseGameScene implements Scene {
     });
 
     this.container.addChild(this.subModeBackButton);
+    
+    // Position using shared method (handles rotation)
+    this.positionBackButton();
   }
 
   /**
@@ -276,18 +299,22 @@ export abstract class BaseGameScene implements Scene {
     // Update browser tab title
     document.title = this.options.title;
     
-    // Build in order: background → gameContainer → UI
+    // Build in order: background → rotationWrapper (contains gameContainer) → UI
     this.buildBackground();
-    this.container.addChild(this.gameContainer);
+    this.container.addChild(this.rotationWrapper);
     this.buildContent();
     this.buildBackButton();
     this.layoutScene();
+    // Must be AFTER layoutScene() because layoutScene decides whether we're rotated.
+    this.positionBackButton();
+    this.positionFPSCounter();
   }
 
   onResize(): void {
     this.layoutBackground();
     this.layoutScene();
     this.positionBackButton();
+    this.positionFPSCounter();
     
     // Detect device state changes (phone/tablet/desktop, portrait/landscape)
     const currentState = this.getDeviceState();
@@ -387,28 +414,164 @@ export abstract class BaseGameScene implements Scene {
   }
 
   /**
-   * Position back button in top-left corner
+   * Position back buttons in the physical top-left corner.
+   *
+   * When the scene is auto-rotated, these buttons should:
+   * - Rotate with the game (same angle as the rotated content)
+   * - Move to the corresponding *effective-landscape* corner
+   *
+   * For our 90° RIGHT (clockwise) rotation, the effective landscape top-left corner
+   * maps to the physical BOTTOM-left corner. So the back button should sit at
+   * physical bottom-left when rotated.
+   *
+   * Note: `Button` is centered around its (x,y), so we place it using bounds.
    */
   private positionBackButton(): void {
-    if (this.backButton) {
-      this.backButton.x = 70;
-      this.backButton.y = 30;
+    const screenW = this.app.width || window.innerWidth;
+    const screenH = this.app.height || window.innerHeight;
+    const padding = 10;
+
+    const desiredRotation = this.isRotatedForOrientation ? this.rotationWrapper.rotation : 0;
+
+    const placeInCorner = (btn: Button, corner: 'topLeft' | 'bottomLeft'): void => {
+      btn.rotation = desiredRotation;
+
+      // Temporary position at origin so bounds reflect only rotation/size.
+      btn.position.set(0, 0);
+      const b = btn.getBounds();
+
+      const desiredX = padding;
+      const desiredY = corner === 'topLeft'
+        ? padding
+        : (screenH - padding - b.height);
+
+      // Move so its bounds top-left matches the desired corner position.
+      btn.x += desiredX - b.x;
+      btn.y += desiredY - b.y;
+
+      // Safety clamp (in case bounds behave unexpectedly on first frame)
+      const b2 = btn.getBounds();
+      let dx = 0;
+      let dy = 0;
+      if (b2.x < padding) dx += padding - b2.x;
+      if (b2.y < padding) dy += padding - b2.y;
+      if (b2.x + b2.width > screenW - padding) dx -= (b2.x + b2.width) - (screenW - padding);
+      if (b2.y + b2.height > screenH - padding) dy -= (b2.y + b2.height) - (screenH - padding);
+      if (dx !== 0 || dy !== 0) { btn.x += dx; btn.y += dy; }
+    };
+
+    // Only one is visible at a time, but we can position both safely.
+    const corner: 'topLeft' | 'bottomLeft' = this.isRotatedForOrientation ? 'bottomLeft' : 'topLeft';
+    if (this.backButton) placeInCorner(this.backButton, corner);
+    if (this.subModeBackButton) placeInCorner(this.subModeBackButton, corner);
+  }
+
+  /**
+   * Position FPS counter DOM element.
+   *
+   * When the scene is auto-rotated, the FPS counter should:
+   * - Rotate with the game (same direction)
+   * - Move to the corresponding *effective-landscape* top-right corner
+   *
+   * For our 90° RIGHT (clockwise) rotation, the effective landscape top-right corner
+   * maps to the physical TOP-left corner. So FPS should sit at physical top-left when rotated.
+   */
+  private positionFPSCounter(): void {
+    const fpsElement = document.getElementById('fps-counter');
+    if (!fpsElement) return;
+
+    const padding = 10;
+
+    if (this.isRotatedForOrientation) {
+      // Place at physical top-left, rotate with the game (-90°).
+      let left = padding;
+      let top = padding;
+      fpsElement.style.left = `${left}px`;
+      fpsElement.style.top = `${top}px`;
+      fpsElement.style.right = 'auto';
+      fpsElement.style.bottom = 'auto';
+      fpsElement.style.transform = 'rotate(-90deg)';
+      fpsElement.style.transformOrigin = 'top left';
+
+      // Clamp in-bounds based on actual DOM rect after transform
+      const rect = fpsElement.getBoundingClientRect();
+      const screenW = window.innerWidth;
+      const screenH = window.innerHeight;
+      if (rect.left < padding) left += padding - rect.left;
+      if (rect.top < padding) top += padding - rect.top;
+      if (rect.right > screenW - padding) left -= rect.right - (screenW - padding);
+      if (rect.bottom > screenH - padding) top -= rect.bottom - (screenH - padding);
+      fpsElement.style.left = `${left}px`;
+      fpsElement.style.top = `${top}px`;
+    } else {
+      // Default: physical top-right, no rotation (matches CSS)
+      fpsElement.style.top = `${padding}px`;
+      fpsElement.style.right = `${padding}px`;
+      fpsElement.style.left = 'auto';
+      fpsElement.style.bottom = 'auto';
+      fpsElement.style.transform = 'none';
+      fpsElement.style.transformOrigin = '';
     }
+  }
+
+  /**
+   * Check if we need to rotate content based on preferred orientation.
+   * Returns true if content should be rotated 90 degrees.
+   */
+  private shouldRotateForOrientation(): boolean {
+    const pref = this.options.preferredOrientation ?? 'any';
+    if (pref === 'any') return false;
+    
+    const screenW = this.app.width || window.innerWidth;
+    const screenH = this.app.height || window.innerHeight;
+    const isPortrait = screenH > screenW;
+    
+    // Rotate if preference doesn't match current orientation
+    if (pref === 'landscape' && isPortrait) return true;
+    if (pref === 'portrait' && !isPortrait) return true;
+    return false;
   }
 
   /**
    * Scale and position the game container to fit available space.
    * Uses explicit designBounds (set via setDesignBounds) for consistent layout.
    * Uses getResponsivePadding() for dynamic phone/desktop padding.
+   * Handles orientation rotation when preferredOrientation is set.
    */
   private layoutScene(): void {
     // Get screen dimensions - use window as fallback if PixiJS dimensions aren't ready
-    const screenW = this.app.width || window.innerWidth;
-    const screenH = this.app.height || window.innerHeight;
+    const physicalW = this.app.width || window.innerWidth;
+    const physicalH = this.app.height || window.innerHeight;
+    let screenW = physicalW;
+    let screenH = physicalH;
     
     // If dimensions are invalid, skip layout
     if (screenW <= 0 || screenH <= 0) {
       return;
+    }
+    
+    // Check if we need to rotate for orientation preference
+    const needsRotation = this.shouldRotateForOrientation();
+    this.isRotatedForOrientation = needsRotation;
+    
+    if (needsRotation) {
+      // Rotate the wrapper 90° to the RIGHT (clockwise)
+      // (Pixi rotation is CCW-positive, so clockwise is negative)
+      this.rotationWrapper.rotation = -Math.PI / 2;
+
+      // Keep the rotated content fully on-screen:
+      // With pivot at (0,0), rotating -90° moves content into negative Y.
+      // Translating by physicalH shifts it back into view.
+      this.rotationWrapper.x = 0;
+      this.rotationWrapper.y = physicalH;
+
+      // Swap available dimensions for layout calculation (content sees swapped screen)
+      [screenW, screenH] = [screenH, screenW];
+    } else {
+      // No rotation
+      this.rotationWrapper.rotation = 0;
+      this.rotationWrapper.x = 0;
+      this.rotationWrapper.y = 0;
     }
     
     // Use dynamic responsive padding (phone vs desktop/tablet)
@@ -416,8 +579,9 @@ export abstract class BaseGameScene implements Scene {
     const p = this.getResponsivePadding();
 
     // Available space (fullscreen with per-side padding)
-    const availableW = screenW - (p.left + p.right);
-    const availableH = screenH - (p.top + p.bottom);
+    // When rotated, swap padding left/right with top/bottom conceptually
+    const availableW = screenW - (needsRotation ? (p.top + p.bottom) : (p.left + p.right));
+    const availableH = screenH - (needsRotation ? (p.left + p.right) : (p.top + p.bottom));
 
     // Use explicit design bounds (never getLocalBounds - that's inconsistent)
     const { x: boundsX, y: boundsY, width: contentW, height: contentH } = this.designBounds;
@@ -434,8 +598,12 @@ export abstract class BaseGameScene implements Scene {
     const scaledW = contentW * scale;
     const scaledH = contentH * scale;
     
-    this.gameContainer.x = p.left + (availableW - scaledW) / 2 - boundsX * scale;
-    this.gameContainer.y = p.top + (availableH - scaledH) / 2 - boundsY * scale;
+    // Padding offsets (swap when rotated)
+    const padLeft = needsRotation ? p.top : p.left;
+    const padTop = needsRotation ? p.left : p.top;
+    
+    this.gameContainer.x = padLeft + (availableW - scaledW) / 2 - boundsX * scale;
+    this.gameContainer.y = padTop + (availableH - scaledH) / 2 - boundsY * scale;
   }
 
   /**
@@ -457,6 +625,10 @@ export abstract class BaseGameScene implements Scene {
     
     // Restore original document title when leaving scene
     document.title = this.originalTitle;
+    
+    // Reset FPS counter position (in case it was rotated)
+    this.isRotatedForOrientation = false;
+    this.positionFPSCounter();
   }
 
   destroy(): void {

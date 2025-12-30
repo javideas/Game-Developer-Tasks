@@ -7,6 +7,12 @@ export interface ToggleOptions {
   value: boolean;
   /** Callback when toggled */
   onChange: (value: boolean) => void;
+  /** Horizontal layout (label and toggle on same line) */
+  horizontal?: boolean;
+  /** Total width for horizontal layout (label takes remaining space) */
+  width?: number;
+  /** Font size for label (default: 12) */
+  fontSize?: number;
 }
 
 /**
@@ -33,9 +39,10 @@ export class Toggle extends Container {
     // Create components
     this.bg = new Graphics();
     this.knob = new Graphics();
+    const fontSize = options.fontSize ?? 12;
     this.labelText = new Text(options.label, new TextStyle({
       fontFamily: 'Arial, sans-serif',
-      fontSize: 12,
+      fontSize: fontSize,
       fill: '#ffffff',
       fontWeight: 'bold',
     }));
@@ -50,10 +57,16 @@ export class Toggle extends Container {
   }
 
   private draw(): void {
+    const isHorizontal = this.options.horizontal ?? false;
+    const totalWidth = this.options.width ?? 200;
+    
+    // Calculate track X position for horizontal layout
+    const trackX = isHorizontal ? totalWidth - this.trackWidth : 0;
+    
     // Track background
     this.bg.clear();
     this.bg.beginFill(this.currentValue ? 0xFF671D : 0x333333);
-    this.bg.drawRoundedRect(0, 0, this.trackWidth, this.trackHeight, this.trackHeight / 2);
+    this.bg.drawRoundedRect(trackX, 0, this.trackWidth, this.trackHeight, this.trackHeight / 2);
     this.bg.endFill();
 
     // Knob
@@ -64,25 +77,40 @@ export class Toggle extends Container {
 
     // Position knob
     const knobX = this.currentValue 
-      ? this.trackWidth - this.knobRadius - 2 
-      : this.knobRadius + 2;
+      ? trackX + this.trackWidth - this.knobRadius - 2 
+      : trackX + this.knobRadius + 2;
     this.knob.x = knobX;
     this.knob.y = this.trackHeight / 2;
 
-    // Position label above track
-    this.labelText.anchor.set(0.5, 1);
-    this.labelText.x = this.trackWidth / 2;
-    this.labelText.y = -5;
+    // Position label
+    if (isHorizontal) {
+      // Label right-aligned, positioned just before the toggle (with small gap)
+      const gap = 10;
+      this.labelText.anchor.set(1, 0.5); // Right-align text
+      this.labelText.x = trackX - gap;   // Position label's right edge before toggle
+      this.labelText.y = this.trackHeight / 2;
+    } else {
+      // Label above track (original behavior)
+      this.labelText.anchor.set(0.5, 1);
+      this.labelText.x = this.trackWidth / 2;
+      this.labelText.y = -5;
+    }
   }
 
   private setupInteraction(): void {
     this.eventMode = 'static';
     this.cursor = 'pointer';
 
-    // Hit area
+    // Hit area - covers the full component
     const hitArea = new Graphics();
     hitArea.beginFill(0x000000, 0.001);
-    hitArea.drawRect(-10, -25, this.trackWidth + 20, this.trackHeight + 30);
+    const isHorizontal = this.options.horizontal ?? false;
+    const totalWidth = this.options.width ?? 200;
+    if (isHorizontal) {
+      hitArea.drawRect(-5, -5, totalWidth + 10, this.trackHeight + 10);
+    } else {
+      hitArea.drawRect(-10, -25, this.trackWidth + 20, this.trackHeight + 30);
+    }
     hitArea.endFill();
     this.addChildAt(hitArea, 0);
 

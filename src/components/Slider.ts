@@ -17,6 +17,8 @@ export interface SliderOptions {
   decimals?: number;
   /** Width of the slider track */
   width?: number;
+  /** Font size for label (default: 12) */
+  fontSize?: number;
   /** Callback when value changes */
   onChange: (value: number) => void;
 }
@@ -51,6 +53,7 @@ export class Slider extends Container {
       unit: options.unit ?? '',
       decimals: options.decimals ?? 1,
       width: options.width ?? 120,
+      fontSize: options.fontSize ?? 12,
       onChange: options.onChange,
     };
 
@@ -60,9 +63,10 @@ export class Slider extends Container {
     this.track = new Graphics();
     this.fill = new Graphics();
     this.handle = new Graphics();
+    const fontSize = options.fontSize ?? 12;
     this.labelText = new Text('', new TextStyle({
       fontFamily: 'Arial, sans-serif',
-      fontSize: 12,
+      fontSize: fontSize,
       fill: '#ffffff',
       fontWeight: 'bold',
     }));

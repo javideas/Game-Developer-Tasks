@@ -76,6 +76,9 @@ export const DIALOGUE_CONFIG = {
   nameBadge: {
     /** Default badge background color (blue) */
     bgColor: 0x3498db,
+    /** Thin border to separate badge from avatars */
+    borderColor: 0x1f1f1f,
+    borderWidth: 2,
     /** Text color */
     textColor: '#ffffff',
     /** Font size */
@@ -102,13 +105,13 @@ export const DIALOGUE_CONFIG = {
     /** Text color */
     color: '#333333',
     /** Font size */
-    fontSize: 26,
+    fontSize: 32,
     /** Font family */
     fontFamily: 'Georgia, serif',
     /** Line height */
     lineHeight: 1.4,
     /** Emoji size */
-    emojiSize: 32,
+    emojiSize: 40,
   },
   /** Avatar settings */
   avatar: {
@@ -185,7 +188,7 @@ export const SETTINGS_PANEL_UI = {
   /** Panel background opacity */
   backgroundAlpha: 0.6,
   /** Panel Y position from top */
-  topOffset: 30,
+  topOffset: 10,
 };
 
 // ============================================================
@@ -227,6 +230,8 @@ export interface MagicWordsSettings {
   avatarYOffset: number;
   preset: string;
   keepSettings: boolean;
+  /** Fake lag in seconds (for debugging loading screen) */
+  fakeLag: number;
 }
 
 /** Default settings values */
@@ -237,6 +242,7 @@ export function getDefaultSettings(): MagicWordsSettings {
     avatarYOffset: DIALOGUE_CONFIG.avatar.yOffset,
     preset: 'A',
     keepSettings: false,
+    fakeLag: 0,
   };
 }
 

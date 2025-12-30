@@ -43,13 +43,17 @@ export interface SettingsPanelContext {
  * 
  * Provides:
  * - Auto-sizing background that wraps content
+ * - Panel is centered at designX/designY by default
  * - Responsive scaling based on available screen space
  * - Device state change handling (phone/tablet/desktop)
  * - Consistent styling across all game tasks
  * 
  * Subclasses implement:
  * - buildControls(): Create sliders, toggles, buttons
- * - getControlsForLayout(): Return controls organized for layout
+ * - rebuildForDeviceState(): Rebuild for different screen sizes
+ * 
+ * Subclasses can override:
+ * - scaleToFit(): Custom positioning logic (e.g., below content vs fixed position)
  */
 export abstract class GameSettingsPanel extends Container {
   protected config: GameSettingsPanelConfig;
@@ -82,14 +86,15 @@ export abstract class GameSettingsPanel extends Container {
     // Build controls (implemented by subclass)
     this.buildControls();
     
-    // Update background to fit content
+    // Update background to fit content and center the panel
     this.updatePanelBackground();
+    this.centerPanelAtOrigin();
     
-    // Position at design coordinates
+    // Position at design coordinates (panel is now centered at origin)
     this.x = config.designX;
     this.y = config.designY;
     
-    // Initial scaling
+    // Initial scaling (subclasses may override scaleToFit)
     requestAnimationFrame(() => this.scaleToFit());
   }
   
@@ -126,8 +131,28 @@ export abstract class GameSettingsPanel extends Container {
   }
   
   /**
-   * Scale panel to fit available screen space
-   * Positions panel below game content, respecting screen padding
+   * Center the panel at origin (0,0) so that setting x/y positions the center.
+   * This offsets both content and background so the visual center is at (0,0).
+   */
+  protected centerPanelAtOrigin(): void {
+    // Make centering idempotent (we can call this after rebuilds without drifting)
+    this.panel.position.set(0, 0);
+    this.content.position.set(0, 0);
+    
+    const bounds = this.getLocalBounds();
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+    
+    // Offset children so center is at origin
+    this.panel.x -= centerX;
+    this.panel.y -= centerY;
+    this.content.x -= centerX;
+    this.content.y -= centerY;
+  }
+  
+  /**
+   * Default: Scale panel to fit available screen space below game content.
+   * Subclasses can override for different positioning (e.g., fixed top position).
    */
   public scaleToFit(): void {
     const { width: screenW, height: screenH } = this.context.getScreenSize();
@@ -140,7 +165,6 @@ export abstract class GameSettingsPanel extends Container {
     
     // Reset scale to measure actual size
     this.scale.set(1);
-    this.y = this.config.designY;
     
     // Get panel bounds in design coordinates
     const panelBounds = this.getLocalBounds();
@@ -179,6 +203,9 @@ export abstract class GameSettingsPanel extends Container {
     const availableCenterY = (availableTop + availableBottom) / 2;
     const targetDesignY = (availableCenterY - this.context.getGameContainerY()) / containerScale;
     this.y = targetDesignY;
+    
+    // Keep horizontal centering from config
+    this.x = this.config.designX;
   }
   
   /**
@@ -200,6 +227,7 @@ export abstract class GameSettingsPanel extends Container {
     this.content.removeChildren();
     this.rebuildForDeviceState(newState);
     this.updatePanelBackground();
+    this.centerPanelAtOrigin();
     this.scaleToFit();
   }
   
@@ -210,4 +238,3 @@ export abstract class GameSettingsPanel extends Container {
     super.destroy(options ?? { children: true });
   }
 }
-
