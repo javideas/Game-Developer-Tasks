@@ -164,7 +164,7 @@ src/
 │     │                  Mode Composition                     │           │
 │     │  ┌─────────────────┐    ┌─────────────────────────┐   │           │
 │     │  │   GameMode      │    │  GameModeContext        │   │           │
-│     │  │   Interface     │◀──│  (shared resources)     │   │           │
+│     │  │   Interface     │◀─ │  (shared resources)     │   │           │
 │     │  │ • start()       │    │  • container            │   │           │
 │     │  │ • stop()        │    │  • spritesheet          │   │           │
 │     │  │ • onResize()    │    │  • gameContainer        │   │           │
@@ -516,6 +516,9 @@ Cards from [Ultimate Minimalist Card Asset Set](https://oxxonpic.itch.io/ultimat
 **Spritesheet Packer** - [Free Texture Packer](https://free-tex-packer.com/app/)
 ![Free texture packer](screenshots/free-texture-packer.png)
 
+https://visualgpt.io/background-remover
+
+![bg-ai-remover](screenshots/bg-ai-remover.png)
 ---
 
 ## 📄 License
