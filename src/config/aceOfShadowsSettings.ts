@@ -171,12 +171,225 @@ export const DESIGN_BOUNDS = {
     width: 600,  // Content width (decks at 200 and 600, plus margins)
     height: 520, // Content height (from arc peak to settings panel bottom)
   },
-  /** Creative mode: placeholder content (centered at 400,300) */
+  /** Creative mode: TriPeaks solitaire layout */
   creative: {
-    x: 100,      // Left edge (center 400 - half width 300)
-    y: 150,      // Top edge
-    width: 600,  // Content width (enough for wrapped text)
-    height: 300, // Content height
+    x: 0,
+    y: 0,
+    width: 800,
+    height: 600,
+  },
+};
+
+// ============================================================
+// TRIPEAKS CREATIVE MODE CONFIG
+// ============================================================
+
+/** Available tableau layout types */
+export type TableauLayoutType = 'castle' | 'hexagon' | 'crown';
+
+/** Layout-specific configuration */
+export interface TableauLayout {
+  name: string;
+  rows: number;
+  cardsPerRow: number[];
+  /** Number of bottom rows that start face-up */
+  initialFaceUpRows: number;
+  /** Optional per-row override for initial face-up state (true=face-up, false=face-down) */
+  rowFaceUp?: boolean[];
+  /** Vertical overlap ratio */
+  verticalOverlap: number;
+  /** Horizontal overlap ratio */
+  horizontalOverlap: number;
+  /** Top Y offset adjustment */
+  topYOffset: number;
+  /**
+   * Optional per-row Y placement factor (in units of vSpacing).
+   * If omitted, uses row index (0,1,2...).
+   */
+  rowYFactors?: number[];
+  /**
+   * Optional per-row horizontal spread multiplier.
+   * 1.0 = normal centering, >1 spreads cards wider (useful for "corner" cards).
+   */
+  rowSpread?: number[];
+  /**
+   * Optional per-card orientation per row.
+   * 'v' = vertical (rotation 0)
+   * 'd' = diagonal (rotation computed from rowRotations / rotationAngle)
+   * If provided, should match cardsPerRow[row] length for each row.
+   */
+  rowCardOrientations?: Array<Array<'v' | 'd'>>;
+  /**
+   * Optional rows that should be rotated (diagonal corner cards).
+   * Contains row indices.
+   */
+  rotatedRows?: number[];
+  /**
+   * Rotation angle in radians for rotated rows (single value for all).
+   */
+  rotationAngle?: number;
+  /**
+   * Optional per-row rotation angles in radians (overrides rotationAngle).
+   * Index corresponds to row index.
+   */
+  rowRotations?: number[];
+  /**
+   * Optional rows that should use "fan" rotation:
+   * cards in the row rotate progressively by column offset, creating an arc.
+   * Uses rowRotations[row] as the max edge angle for that row.
+   */
+  fanRotationRows?: number[];
+  /**
+   * Optional rows that should be rendered behind others (lower z-index).
+   * Contains row indices.
+   */
+  behindRows?: number[];
+  /**
+   * Optional per-card Y offset per row, for arc effects.
+   * Positive = lower, negative = higher.
+   * If provided, should match cardsPerRow[row] length for each row.
+   */
+  rowCardYOffsets?: number[][];
+}
+
+/** 
+ * Predefined layouts for the tableau 
+ */
+export const TABLEAU_LAYOUTS: Record<TableauLayoutType, TableauLayout> = {
+  /** Castle: Traditional pyramid shape (3-4-5-6) */
+  castle: {
+    name: 'Castle',
+    rows: 4,
+    cardsPerRow: [3, 4, 5, 6],
+    initialFaceUpRows: 1,
+    verticalOverlap: 0.55,
+    horizontalOverlap: 0.78,
+    topYOffset: 0,
+  },
+  /** 
+   * Hexagon: Diamond grid with corner cards
+   * - 5 rows, 4 columns conceptually
+   * - Row 0: 2 cards visible (center columns 1,2)
+   * - Row 1: 2 cards face-down (corner columns 0,3) - between top and middle
+   * - Row 2: 4 cards visible (all columns 0,1,2,3)
+   * - Row 3: 2 cards face-down (corner columns 0,3) - between middle and bottom
+   * - Row 4: 2 cards visible (center columns 1,2)
+   */
+  hexagon: {
+    name: 'Hexagon',
+    rows: 5,
+    cardsPerRow: [2, 2, 4, 2, 2],
+    initialFaceUpRows: 1,  // Only use rowFaceUp for control
+    rowFaceUp: [true, false, true, false, true],  // Corner rows are face-down
+    verticalOverlap: 1.08, // >1 = no overlap, slight margin between rows
+    horizontalOverlap: 1.05, // Slight horizontal margin
+    topYOffset: -50, // Move up above stock/waste area
+    // Y factors to position corner rows between main rows
+    rowYFactors: [0, 0.5, 1, 1.5, 2],
+    // Spread: center rows use normal, corner rows spread to outer columns
+    rowSpread: [1, 2.5, 1, 2.5, 1],
+    // Diagonal corner cards are rotated
+    rotatedRows: [1, 3],
+    rotationAngle: Math.PI / 6, // 30 degrees
+    // Corner cards render behind face-up cards
+    behindRows: [1, 3],
+  },
+  /**
+   * Crown: Fan-shaped layout with diagonal cards spreading upward
+   * - Row 0 (bottom): 3 vertical face-up cards
+   * - Rows 1-6: 2 diagonal face-down cards each, progressively spreading
+   * Total: 15 cards (3 + 12)
+   */
+  crown: {
+    name: 'Crown',
+    // Reference pattern (left-to-right):
+    //       d v d
+    // d v v v v v d
+    //   d d v v d d
+    //       v v v
+    //
+    // Note: row 0 is top, increasing row index goes downward.
+    rows: 4,
+    cardsPerRow: [3, 7, 6, 3],
+    initialFaceUpRows: 1,
+    rowFaceUp: [false, false, false, true],  // ONLY bottom row face-up
+    // Spacing - more separation between cards
+    verticalOverlap: 0.45,   // Slightly more vertical space
+    horizontalOverlap: 0.72, // More horizontal space (less overlap)
+    topYOffset: 100,         // Move whole layout up
+    rowYFactors: [0, 0.85, 1.60, 2.75], // More space before bottom row
+    // Row spreads: 2nd row tighter, bottom row much wider for margin
+    rowSpread: [1.6, 1.4, 1.4, 2.2], // Bottom row very wide (2.2) for separation
+    // Orientation mask per row
+    rowCardOrientations: [
+      ['d', 'v', 'd'],
+      ['d', 'v', 'v', 'v', 'v', 'v', 'd'],
+      ['d', 'd', 'v', 'v', 'd', 'd'],
+      ['v', 'v', 'v'],
+    ],
+    // Per-card Y offsets for arc effect (positive = lower)
+    // Row 0: center card up, edges down slightly
+    // Row 1: center cards level, edges drop down for arc
+    // Row 2: center level, edges drop down EVEN MORE for arc
+    // Row 3: no offset (bottom row)
+    rowCardYOffsets: [
+      [-15, -30, -15],                    // Row 0: center up more
+      [35, 10, 0, -5, 0, 10, 35],         // Row 1: edges down for arc
+      [65, 35, 0, 0, 35, 65],             // Row 2: edges down MUCH more (65px)
+      [0, 0, 0],                          // Row 3: no offset
+    ],
+    // We'll rotate only the diagonal cards (per-card) using these as max edge angles per row
+    rotatedRows: [0, 1, 2],
+    // Use "fan" math but only on 'd' cards; verticals remain 0 rotation
+    fanRotationRows: [0, 1, 2],
+    rowRotations: [
+      Math.PI / 4.2, // row 0 (top): stronger
+      Math.PI / 5.2, // row 1: medium
+      Math.PI / 6.2, // row 2: slightly softer
+      0,             // row 3: verticals
+    ],
+    // Z-order: top rows behind, bottom rows in front
+    behindRows: [0, 1, 2],
+  },
+};
+
+/**
+ * TriPeaks solitaire layout configuration for Creative Mode.
+ * Based on Solitaire Home Story by SOFTGAMES.
+ */
+export const TRIPEAKS_CONFIG = {
+  // Card dimensions
+  /** Card scale relative to spritesheet texture */
+  cardScale: 0.58,
+  
+  // Default layout (can be changed at runtime)
+  defaultLayout: 'hexagon' as TableauLayoutType,
+  
+  // Tableau position
+  /** Tableau center X in design coordinates */
+  tableauCenterX: 400,
+  /** Tableau top Y in design coordinates */
+  tableauTopY: 115,
+  
+  // Player area (stock + waste)
+  /** Stock pile X position */
+  stockX: 160,
+  /** Waste pile X position */
+  wasteX: 400,
+  /** Player area Y position */
+  playerAreaY: 485,
+  
+  // Stock pile visual
+  /** Number of visible stacked cards in stock pile */
+  stockVisibleCards: 5,
+  /** Offset between stacked stock cards */
+  stockStackOffset: 2,
+  
+  // Shadow (reuse from literal mode)
+  shadow: {
+    offsetX: 2,
+    offsetY: 2,
+    alpha: 0.3,
   },
 };
 

@@ -347,14 +347,25 @@ export class AceOfShadowsModeLiteral implements GameMode {
     return firstChild instanceof Sprite ? firstChild : null;
   }
   
+  /**
+   * Get appropriate card back texture based on suit (row)
+   * 
+   * Spritesheet suit rows:
+   *   - Row 1 = Hearts (red)
+   *   - Row 3 = Diamonds (red)
+   *   - Row 4 = Spades (black)
+   *   - Row 6 = Clubs (black)
+   */
   private getCardBackTexture(textureName: string): Texture | null {
     const match = textureName.match(/sprite-(\d+)-/);
     if (match) {
       const row = parseInt(match[1]);
-      if (row === 1 || row === 4) {
+      // Rows 1 and 3 (Hearts and Diamonds) use red back
+      if (row === 1 || row === 3) {
         return this.cardBackRedTexture;
       }
     }
+    // Rows 4 and 6 (Spades and Clubs) use dark back
     return this.cardBackDarkTexture;
   }
   

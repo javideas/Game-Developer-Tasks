@@ -763,6 +763,10 @@ export class MagicWordsModeLiteral implements GameMode {
     const ACTIVE_MULT = 1.08;   // Speaking avatar 8% larger
     const BOUNCE_START = 0.85;  // Start bounce at 85% of target
     
+    // Tint values for active/inactive states (darken instead of fade)
+    const ACTIVE_TINT = 0xffffff;   // Full brightness
+    const INACTIVE_TINT = 0x666666; // Darkened
+    
     // Bounce the active avatar every time they speak
     if (texture) {
       // Start smaller for bounce effect
@@ -771,6 +775,7 @@ export class MagicWordsModeLiteral implements GameMode {
       
       activeAvatar.scale.set(startScale, startScale);
       activeAvatar.alpha = 1;
+      activeAvatar.tint = ACTIVE_TINT; // Full brightness for speaker
       
       // Bounce to active scale (slightly bigger than rest)
       gsap.to(activeAvatar.scale, {
@@ -786,6 +791,7 @@ export class MagicWordsModeLiteral implements GameMode {
         duration: animation.avatarDuration,
         ease: 'power2.out',
       });
+      activeAvatar.tint = ACTIVE_TINT;
     }
     
     // Handle inactive avatar
@@ -807,12 +813,9 @@ export class MagicWordsModeLiteral implements GameMode {
         },
       });
     } else if (inactiveAvatar.texture) {
-      // Dim and return to rest scale (base scale without multiplier)
-      gsap.to(inactiveAvatar, {
-        alpha: 0.4,
-        duration: animation.avatarDuration,
-        ease: 'power2.out',
-      });
+      // Darken inactive speaker (keep full alpha, use tint)
+      inactiveAvatar.alpha = 1;
+      inactiveAvatar.tint = INACTIVE_TINT;
       gsap.to(inactiveAvatar.scale, {
         x: inactiveBaseScale,
         y: inactiveBaseScale,

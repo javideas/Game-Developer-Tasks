@@ -1,0 +1,63 @@
+{
+  "frames": {
+    "sheldon.png": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 849,
+        "h": 1485
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 150,
+        "y": 51,
+        "w": 849,
+        "h": 1485
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "neighbour.png": {
+      "frame": {
+        "x": 849,
+        "y": 0,
+        "w": 867,
+        "h": 1446
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 100,
+        "y": 90,
+        "w": 867,
+        "h": 1446
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "meta": {
+    "app": "http://free-tex-packer.com",
+    "version": "0.6.7",
+    "image": "bigbang-chars-0.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 1716,
+      "h": 1485
+    },
+    "scale": 1
+  }
+}

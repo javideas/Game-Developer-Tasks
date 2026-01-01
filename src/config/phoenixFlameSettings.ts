@@ -54,7 +54,7 @@ export const PARTICLE_CONFIG = {
   maxLandedSprites: 3,
   
   /** Particles spawned per second */
-  spawnRate: 2,
+  spawnRate: 3,
   
   /** Maximum particle lifetime in seconds */
   lifetime: 2.5,
@@ -91,6 +91,11 @@ export const PARTICLE_CONFIG = {
   heightMultiplierMin: 0.3,
   heightMultiplierMax: 3.0,
   
+  /** Spawn height range - how far UP from the pivot particles can spawn (in pixels, scaled) */
+  spawnHeightRange: 300,
+  spawnHeightRangeMin: 0,
+  spawnHeightRangeMax: 600,
+  
   /** Pause before shrinking starts (seconds) */
   landingPause: 0.3,
   landingPauseMin: 0,
@@ -101,6 +106,18 @@ export const PARTICLE_CONFIG = {
   
   /** Gravity acceleration (pixels per second squared) - higher = more dramatic arc */
   gravity: 800,
+  gravityMin: 800,
+  gravityMax: 1600,
+  
+  /** Minimum angle difference from last particle (0 = disabled, fully random) */
+  angleThreshold: 0,
+  angleThresholdMin: 0,
+  angleThresholdMax: 90,
+  
+  /** Minimum speed difference from last particle (0 = disabled, fully random) */
+  speedThreshold: 0,
+  speedThresholdMin: 0,
+  speedThresholdMax: 100,
   
   /** Extra offset below the bottom of the flame sprite for floor */
   floorExtraOffset: -20,
@@ -118,7 +135,7 @@ export const PARTICLE_CONFIG = {
   animationSpeed: 0.2,
   
   /** Shrink offset - adjusts where the shrinking pivot point is (positive = higher) */
-  shrinkOffset: 30,
+  shrinkOffset: 50,
   shrinkOffsetMin: -200,
   shrinkOffsetMax: 200,
   

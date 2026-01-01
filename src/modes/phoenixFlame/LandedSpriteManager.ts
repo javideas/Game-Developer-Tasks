@@ -60,6 +60,7 @@ export class LandedSpriteManager {
    * @param pauseDuration - Time to wait before shrinking (ms)
    * @param shrinkDuration - Time to shrink to 0 (ms)
    * @param pivotOffset - Offset in pixels to adjust the shrink pivot (positive = higher)
+   * @param onComplete - Callback when shrink animation completes
    * @returns true if sprite was spawned, false if pool exhausted
    */
   public spawnLanded(
@@ -68,7 +69,8 @@ export class LandedSpriteManager {
     scale: number,
     pauseDuration: number,
     shrinkDuration: number,
-    pivotOffset: number = 0
+    pivotOffset: number = 0,
+    onComplete?: () => void
   ): boolean {
     // Find an available sprite in the pool
     const sprite = this.pool.find(s => !s.visible);
@@ -76,6 +78,9 @@ export class LandedSpriteManager {
       // Pool exhausted - skip this landing (graceful degradation)
       return false;
     }
+
+    // Spacing is enforced at spawn time via zone-based reservation in LandingSpacingBehavior.
+    // No need to check spacing here - if the particle landed, its zone was clear.
     
     // Calculate anchor adjustment and position compensation
     // The sprite shrinks from its anchor point. To change where it shrinks from
@@ -123,6 +128,8 @@ export class LandedSpriteManager {
           sprite.scale.set(1); // Reset for reuse
           sprite.anchor.set(0.5, 1.0); // Reset anchor for reuse
           this.activeCount--;
+          // Call completion callback (e.g., to release section)
+          onComplete?.();
         }
       });
     
@@ -134,6 +141,14 @@ export class LandedSpriteManager {
    */
   public getActiveCount(): number {
     return this.activeCount;
+  }
+
+  /**
+   * Get X positions of currently visible landed sprites (world-space).
+   * Used to enforce landing spacing for new particles.
+   */
+  public getActiveXs(): number[] {
+    return this.pool.filter(s => s.visible).map(s => s.x);
   }
   
   /**

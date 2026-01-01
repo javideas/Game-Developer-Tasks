@@ -1,0 +1,63 @@
+{
+  "frames": {
+    "leonard.png": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 812,
+        "h": 1474
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 139,
+        "y": 62,
+        "w": 812,
+        "h": 1474
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "penny.png": {
+      "frame": {
+        "x": 812,
+        "y": 0,
+        "w": 855,
+        "h": 1458
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 124,
+        "y": 78,
+        "w": 855,
+        "h": 1458
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "meta": {
+    "app": "http://free-tex-packer.com",
+    "version": "0.6.7",
+    "image": "bigbang-chars-1.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 1667,
+      "h": 1474
+    },
+    "scale": 1
+  }
+}

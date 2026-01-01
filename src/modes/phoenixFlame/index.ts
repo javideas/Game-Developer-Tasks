@@ -5,9 +5,7 @@ export { PhoenixFlameModeCreative } from './PhoenixFlameModeCreative';
 // UI components
 export { PhoenixFlameSettingsPanel } from './PhoenixFlameSettingsPanel';
 
-// Particle system components
-export { FloorCollisionBehavior } from './behaviors/FloorCollisionBehavior';
-export { RotationOffsetBehavior } from './behaviors/RotationOffsetBehavior';
+// Particle system components (Senior approach: object pooling)
+export { FlyingParticlePool } from './FlyingParticlePool';
+export type { FlyingParticle } from './FlyingParticlePool';
 export { LandedSpriteManager } from './LandedSpriteManager';
-export { createFlameEmitterConfig } from './emitterConfig';
-export type { EmitterSettings } from './emitterConfig';

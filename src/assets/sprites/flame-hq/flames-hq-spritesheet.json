@@ -1,55 +1,171 @@
 {
   "frames": {
     "flame_0": {
-      "frame": { "x": 0, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 39,
+        "y": 369,
+        "w": 151,
+        "h": 302
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 19,
+        "y": 189,
+        "w": 151,
+        "h": 302
+      }
     },
     "flame_1": {
-      "frame": { "x": 192, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 228,
+        "y": 359,
+        "w": 145,
+        "h": 308
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 25,
+        "y": 179,
+        "w": 145,
+        "h": 308
+      }
     },
     "flame_2": {
-      "frame": { "x": 384, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 410,
+        "y": 363,
+        "w": 149,
+        "h": 304
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 23,
+        "y": 183,
+        "w": 149,
+        "h": 304
+      }
     },
     "flame_3": {
-      "frame": { "x": 576, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 594,
+        "y": 353,
+        "w": 150,
+        "h": 316
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 21,
+        "y": 173,
+        "w": 150,
+        "h": 316
+      }
     },
     "flame_4": {
-      "frame": { "x": 768, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 782,
+        "y": 357,
+        "w": 148,
+        "h": 312
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 23,
+        "y": 177,
+        "w": 148,
+        "h": 312
+      }
     },
     "flame_5": {
-      "frame": { "x": 960, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 970,
+        "y": 379,
+        "w": 148,
+        "h": 289
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 22,
+        "y": 199,
+        "w": 148,
+        "h": 289
+      }
     },
     "flame_6": {
-      "frame": { "x": 1152, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 1159,
+        "y": 385,
+        "w": 153,
+        "h": 283
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 22,
+        "y": 205,
+        "w": 153,
+        "h": 283
+      }
     },
     "flame_7": {
-      "frame": { "x": 1344, "y": 180, "w": 192, "h": 700 },
-      "sourceSize": { "w": 192, "h": 700 },
-      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 700 }
+      "frame": {
+        "x": 1350,
+        "y": 381,
+        "w": 149,
+        "h": 286
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 700
+      },
+      "spriteSourceSize": {
+        "x": 21,
+        "y": 201,
+        "w": 149,
+        "h": 286
+      }
     }
   },
   "animations": {
-    "flame": ["flame_0", "flame_1", "flame_2", "flame_3", "flame_4", "flame_5", "flame_6", "flame_7"]
+    "flame": [
+      "flame_0",
+      "flame_1",
+      "flame_2",
+      "flame_3",
+      "flame_4",
+      "flame_5",
+      "flame_6",
+      "flame_7"
+    ]
   },
   "meta": {
     "app": "manual",
     "version": "1.0.0",
     "image": "flames-hq.png",
     "format": "RGBA8888",
-    "size": { "w": 1536, "h": 1024 },
+    "size": {
+      "w": 1536,
+      "h": 1024
+    },
     "scale": "1"
   }
 }
