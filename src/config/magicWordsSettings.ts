@@ -1,6 +1,6 @@
 /**
  * Magic Words Settings Configuration
- * 
+ *
  * Task 2: Text + inline emoji rendering system
  */
 
@@ -94,10 +94,10 @@ export const DIALOGUE_CONFIG = {
     marginY: 10,
     /** Speaker-specific colors (name -> hex color) */
     speakerColors: {
-      'Sheldon': 0x6dbb58,   // Green (matches his shirt)
-      'Leonard': 0xf3b63a,   // Orange/Yellow (matches his shirt)
-      'Penny': 0xf55d81,     // Pink (matches her outfit)
-      'Neighbour': 0x9b59b6, // Purple (distinct)
+      Sheldon: 0x6dbb58, // Green (matches his shirt)
+      Leonard: 0xf3b63a, // Orange/Yellow (matches his shirt)
+      Penny: 0xf55d81, // Pink (matches her outfit)
+      Neighbour: 0x9b59b6, // Purple (distinct)
     } as Record<string, number>,
   },
   /** Text settings */
@@ -205,17 +205,17 @@ export interface DialoguePreset {
 
 /** Available presets */
 export const PRESETS: Record<string, DialoguePreset> = {
-  A: { 
-    dialogBox: 800, 
-    avatarSize: 500, 
-    yOffset: 0, 
-    label: 'Option A (Default)' 
+  A: {
+    dialogBox: 800,
+    avatarSize: 500,
+    yOffset: 0,
+    label: 'Option A (Default)',
   },
-  B: { 
-    dialogBox: 1040, 
-    avatarSize: 360, 
-    yOffset: -150, 
-    label: 'Option B (Compact)' 
+  B: {
+    dialogBox: 1040,
+    avatarSize: 360,
+    yOffset: -150,
+    label: 'Option B (Compact)',
   },
 };
 
@@ -290,4 +290,3 @@ export interface MagicWordsData {
   emojies: EmojiDef[];
   avatars: AvatarDef[];
 }
-

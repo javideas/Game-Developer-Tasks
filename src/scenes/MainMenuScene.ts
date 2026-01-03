@@ -1,13 +1,13 @@
 import { Container, Text, TextStyle, Graphics } from 'pixi.js';
-import type { Scene } from '../core/SceneManager';
-import type { Application } from '../core/Application';
-import { DESIGN, BRAND_ORANGE } from '../config/design';
-import { MenuTile } from '../components/MenuTile';
 
 // Thumbnail imports (Vite bundles these)
 import aceThumbUrl from '../assets/sprites/thumbnails/ace-of-shadows-thumbnail.png';
 import magicThumbUrl from '../assets/sprites/thumbnails/magic-words-thumbnail.png';
 import phoenixThumbUrl from '../assets/sprites/thumbnails/phoenix-flames-thumbnail.png';
+import { MenuTile } from '../components/MenuTile';
+import { DESIGN, BRAND_ORANGE } from '../config/design';
+import type { Application } from '../core/Application';
+import type { Scene } from '../core/SceneManager';
 
 /**
  * Menu tile data
@@ -18,7 +18,7 @@ const MENU_TILES = [
   { key: 'phoenix', label: 'Phoenix Flame', thumbnailUrl: phoenixThumbUrl },
 ] as const;
 
-export type MenuTileKey = typeof MENU_TILES[number]['key'];
+export type MenuTileKey = (typeof MENU_TILES)[number]['key'];
 
 export interface MainMenuSceneOptions {
   /** Callback when a game tile is clicked */
@@ -27,7 +27,7 @@ export interface MainMenuSceneOptions {
 
 /**
  * MainMenuScene
- * 
+ *
  * The main menu with:
  * - BESTGAMES-style orange title banner
  * - Subtitle
@@ -204,4 +204,3 @@ export class MainMenuScene implements Scene {
     this.menuContainer.removeChildren();
   }
 }
-

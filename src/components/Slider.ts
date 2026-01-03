@@ -25,7 +25,7 @@ export interface SliderOptions {
 
 /**
  * Slider
- * 
+ *
  * A PixiJS-based slider component for controlling numeric values.
  */
 export class Slider extends Container {
@@ -64,12 +64,15 @@ export class Slider extends Container {
     this.fill = new Graphics();
     this.handle = new Graphics();
     const fontSize = options.fontSize ?? 12;
-    this.labelText = new Text('', new TextStyle({
-      fontFamily: 'Arial, sans-serif',
-      fontSize: fontSize,
-      fill: '#ffffff',
-      fontWeight: 'bold',
-    }));
+    this.labelText = new Text(
+      '',
+      new TextStyle({
+        fontFamily: 'Arial, sans-serif',
+        fontSize: fontSize,
+        fill: '#ffffff',
+        fontWeight: 'bold',
+      })
+    );
     this.labelText.resolution = 2;
 
     this.addChild(this.track);
@@ -112,7 +115,7 @@ export class Slider extends Container {
 
     // Fill bar
     this.fill.clear();
-    this.fill.beginFill(0xFF671D);
+    this.fill.beginFill(0xff671d);
     this.fill.drawRoundedRect(0, -this.trackHeight / 2, handleX, this.trackHeight, 3);
     this.fill.endFill();
 
@@ -181,16 +184,16 @@ export class Slider extends Container {
     // Convert global position to local
     // Important: use both x/y so this works when the slider (or parent scene) is rotated.
     const localPos = this.toLocal({ x: globalX, y: globalY });
-    
+
     // Calculate ratio (clamped to 0-1)
-    let ratio = Math.max(0, Math.min(1, localPos.x / width));
-    
+    const ratio = Math.max(0, Math.min(1, localPos.x / width));
+
     // Calculate raw value
     let newValue = min + ratio * (max - min);
-    
+
     // Snap to step
     newValue = Math.round(newValue / step) * step;
-    
+
     // Clamp to range
     newValue = Math.max(min, Math.min(max, newValue));
 
@@ -218,4 +221,3 @@ export class Slider extends Container {
     this.updateLabel();
   }
 }
-

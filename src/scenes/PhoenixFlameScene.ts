@@ -1,21 +1,23 @@
 import { Assets, Container, Sprite } from 'pixi.js';
-import type { Application } from '../core/Application';
-import { BaseGameScene, type DeviceState } from './BaseGameScene';
-import type { GameMode, GameModeContext } from '../modes/GameMode';
-import { PhoenixFlameModeLiteral, PhoenixFlameModeCreative } from '../modes/phoenixFlame';
+
+import phoenixFlameBg from '../assets/sprites/phoenix-flame/phoenix-flame-bg.jpeg';
 import { ModeSelectionPanel } from '../components/ModeSelectionPanel';
 import { SELECTION_PANEL } from '../config/phoenixFlameSettings';
 import { SCENE_LAYOUT } from '../config/sharedSettings';
+import type { Application } from '../core/Application';
+import type { GameMode, GameModeContext } from '../modes/GameMode';
+import { PhoenixFlameModeLiteral, PhoenixFlameModeCreative } from '../modes/phoenixFlame';
+
+import { BaseGameScene, type DeviceState } from './BaseGameScene';
 
 // Background image
-import phoenixFlameBg from '../assets/sprites/phoenix-flame/phoenix-flame-bg.jpeg';
 
 /**
  * PhoenixFlameScene
- * 
+ *
  * Task 3: Make a particle-effect demo showing a great fire effect.
  * Keep the number of images at max 10 sprites on screen at the same time.
- * 
+ *
  * This scene acts as a coordinator:
  * - Displays mode selection screen
  * - Delegates to mode classes (Literal, Creative)
@@ -24,21 +26,21 @@ import phoenixFlameBg from '../assets/sprites/phoenix-flame/phoenix-flame-bg.jpe
 export class PhoenixFlameScene extends BaseGameScene {
   /** Current scene mode - tracked for debugging */
   private currentMode: 'selection' | 'literal' | 'creative' = 'selection';
-  
+
   /** Get current scene mode (for debugging/testing) */
   get mode(): 'selection' | 'literal' | 'creative' {
     return this.currentMode;
   }
-  
+
   /** Active game mode instance */
   private activeMode: GameMode | null = null;
-  
+
   /** Container for mode content */
   private modeContainer: Container | null = null;
-  
+
   /** Selection screen container */
   private selectionContainer: Container | null = null;
-  
+
   /** Background sprite */
   private backgroundSprite: Sprite | null = null;
 
@@ -59,32 +61,32 @@ export class PhoenixFlameScene extends BaseGameScene {
   protected async buildContent(): Promise<void> {
     // Load and add background
     await this.loadBackground();
-    
+
     this.buildSelectionScreen();
   }
-  
+
   private async loadBackground(): Promise<void> {
     const texture = await Assets.load(phoenixFlameBg);
     this.backgroundSprite = new Sprite(texture);
-    
+
     // Add to container at index 0 (behind everything)
     this.container.addChildAt(this.backgroundSprite, 0);
-    
+
     // Size will be set in onResize
     this.updateBackgroundSize();
   }
-  
+
   private updateBackgroundSize(): void {
     if (!this.backgroundSprite) return;
-    
+
     const screenW = this.app.width || window.innerWidth;
     const screenH = this.app.height || window.innerHeight;
-    
+
     // Cover the entire screen while maintaining aspect ratio
     const texture = this.backgroundSprite.texture;
     const bgAspect = texture.width / texture.height;
     const screenAspect = screenW / screenH;
-    
+
     if (screenAspect > bgAspect) {
       // Screen is wider - fit to width
       this.backgroundSprite.width = screenW;
@@ -94,7 +96,7 @@ export class PhoenixFlameScene extends BaseGameScene {
       this.backgroundSprite.height = screenH;
       this.backgroundSprite.width = screenH * bgAspect;
     }
-    
+
     // Center the background
     this.backgroundSprite.x = (screenW - this.backgroundSprite.width) / 2;
     this.backgroundSprite.y = (screenH - this.backgroundSprite.height) / 2;
@@ -102,10 +104,10 @@ export class PhoenixFlameScene extends BaseGameScene {
 
   onResize(): void {
     super.onResize();
-    
+
     // Update background size
     this.updateBackgroundSize();
-    
+
     // Forward resize to active mode
     if (this.activeMode?.onResize) {
       this.activeMode.onResize();
@@ -121,26 +123,26 @@ export class PhoenixFlameScene extends BaseGameScene {
 
   onStop(): void {
     super.onStop();
-    
+
     // Stop active mode
     if (this.activeMode) {
       this.activeMode.stop();
       this.activeMode = null;
     }
-    
+
     // Reset mode for next entry
     this.currentMode = 'selection';
   }
 
   destroy(): void {
     this.onStop();
-    
+
     // Clean up background
     if (this.backgroundSprite) {
       this.backgroundSprite.destroy();
       this.backgroundSprite = null;
     }
-    
+
     super.destroy();
   }
 
@@ -156,16 +158,17 @@ export class PhoenixFlameScene extends BaseGameScene {
     // Create mode selection panel
     const panel = new ModeSelectionPanel({
       title: 'Phoenix Flame',
-      description: 'A particle-effect demo showing a great fire effect. Keep the number of images at max 10 sprites on screen at the same time.',
+      description:
+        'A particle-effect demo showing a great fire effect. Keep the number of images at max 10 sprites on screen at the same time.',
       buttons: [
         {
           label: '🔥 Literal Task',
-          backgroundColor: 0xE65100, // Deep orange for fire
+          backgroundColor: 0xe65100, // Deep orange for fire
           onClick: () => this.startMode('literal'),
         },
         {
           label: '✨ Creative Take',
-          backgroundColor: 0x7B1FA2,
+          backgroundColor: 0x7b1fa2,
           onClick: () => this.startMode('creative'),
         },
       ],
@@ -173,6 +176,7 @@ export class PhoenixFlameScene extends BaseGameScene {
       centerY: SELECTION_PANEL.centerY,
       paddingX: SELECTION_PANEL.paddingX,
       paddingY: SELECTION_PANEL.paddingY,
+      descriptionGap: SELECTION_PANEL.descriptionGap,
       titleGap: SELECTION_PANEL.titleGap,
       buttonGap: SELECTION_PANEL.buttonGap,
       buttonWidth: SELECTION_PANEL.buttonWidth,
@@ -195,7 +199,7 @@ export class PhoenixFlameScene extends BaseGameScene {
   // Mode Management
   // ============================================================
 
-  private startMode(mode: 'literal' | 'creative'): void {
+  private async startMode(mode: 'literal' | 'creative'): Promise<void> {
     this.currentMode = mode;
 
     // Remove selection screen
@@ -224,8 +228,8 @@ export class PhoenixFlameScene extends BaseGameScene {
     } else {
       this.activeMode = new PhoenixFlameModeCreative(context);
     }
-    
-    this.activeMode.start();
+
+    await this.activeMode.start();
   }
 
   private returnToSelection(): void {
@@ -255,24 +259,24 @@ export class PhoenixFlameScene extends BaseGameScene {
 
   private createModeContext(): GameModeContext {
     const self = this;
-    
+
     return {
       container: this.modeContainer!,
       spritesheet: undefined, // Phoenix modes load their own spritesheets
       gameContainer: this.gameContainer,
-      
+
       getDeviceState: () => self.getDeviceState(),
-      
+
       requestLayout: () => self.requestLayout(),
-      
-      setDesignBounds: (bounds) => self.setDesignBounds(bounds),
-      
+
+      setDesignBounds: bounds => self.setDesignBounds(bounds),
+
       getScreenSize: () => ({
         width: self.app.width || window.innerWidth,
         height: self.app.height || window.innerHeight,
       }),
-      
-      generateTexture: (graphics) => self.app.pixi.renderer.generateTexture(graphics),
+
+      generateTexture: graphics => self.app.pixi.renderer.generateTexture(graphics),
     };
   }
 }

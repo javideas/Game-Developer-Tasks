@@ -1,6 +1,6 @@
 /**
  * ErrorHandler - Centralized error handling for the application
- * 
+ *
  * Provides:
  * - Consistent error logging
  * - Error categorization by context
@@ -13,16 +13,12 @@ export class ErrorHandler {
   /**
    * Handle an error with context information.
    * Logs to console and could be extended to send to external services.
-   * 
+   *
    * @param error The error that occurred
    * @param context A descriptive context (e.g., 'scene-startup', 'api-fetch')
    * @param metadata Optional additional data for debugging
    */
-  static handle(
-    error: unknown,
-    context: string,
-    metadata?: Record<string, unknown>
-  ): void {
+  static handle(error: unknown, context: string, metadata?: Record<string, unknown>): void {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
 
@@ -48,15 +44,12 @@ export class ErrorHandler {
   /**
    * Wrap an async function with error handling.
    * Useful for one-off operations that should not crash the app.
-   * 
+   *
    * @param fn The async function to wrap
    * @param context Error context for logging
    * @returns The result or undefined if an error occurred
    */
-  static async wrap<T>(
-    fn: () => Promise<T>,
-    context: string
-  ): Promise<T | undefined> {
+  static async wrap<T>(fn: () => Promise<T>, context: string): Promise<T | undefined> {
     try {
       return await fn();
     } catch (error) {
@@ -68,7 +61,7 @@ export class ErrorHandler {
   /**
    * Retry an async operation with exponential backoff.
    * Useful for network requests that may fail transiently.
-   * 
+   *
    * @param fn The async function to retry
    * @param context Error context for logging
    * @param maxAttempts Maximum number of attempts (default: 3)
@@ -82,13 +75,13 @@ export class ErrorHandler {
     initialDelay = 1000
   ): Promise<T> {
     let lastError: unknown;
-    
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         return await fn();
       } catch (error) {
         lastError = error;
-        
+
         if (attempt < maxAttempts) {
           const delay = initialDelay * Math.pow(2, attempt - 1);
           if (this.verbose) {
@@ -100,10 +93,8 @@ export class ErrorHandler {
         }
       }
     }
-    
+
     this.handle(lastError, context, { attempts: maxAttempts });
     throw lastError;
   }
 }
-
-

@@ -6,5 +6,4 @@ export { SceneManager } from './SceneManager';
 export type { Scene } from './SceneManager';
 export { FPSCounter } from './FPSCounter';
 export { ErrorHandler } from './ErrorHandler';
-export { killTweensRecursive } from './AnimationUtils';
-
+export { killTweensRecursive, prefixSpritesheetFrames } from './AnimationUtils';

@@ -1,4 +1,5 @@
 import type { Container, Spritesheet, Texture } from 'pixi.js';
+
 import type { DeviceState } from '../scenes/BaseGameScene';
 
 /**
@@ -18,25 +19,25 @@ export interface DesignBounds {
 export interface GameModeContext {
   /** Container for mode content (child of scene's gameContainer) */
   readonly container: Container;
-  
+
   /** Loaded spritesheet with card/game textures (optional - some modes load their own) */
   readonly spritesheet?: Spritesheet;
-  
+
   /** Scene's gameContainer for coordinate conversions and scaling */
   readonly gameContainer: Container;
-  
+
   /** Get current device state (phonePortrait, phoneLandscape, desktop) */
   getDeviceState(): DeviceState;
-  
+
   /** Request scene to perform layout after bounds change */
   requestLayout(): void;
-  
+
   /** Set design bounds for responsive scaling */
   setDesignBounds(bounds: DesignBounds): void;
-  
+
   /** Get screen dimensions */
   getScreenSize(): { width: number; height: number };
-  
+
   /** Generate texture from Graphics (for shadows, etc.) */
   generateTexture(graphics: Container): Texture;
 }
@@ -44,7 +45,7 @@ export interface GameModeContext {
 /**
  * Interface for game mode implementations.
  * Each mode handles its own UI, logic, and cleanup.
- * 
+ *
  * Usage:
  * - Scene creates mode instance with context
  * - Scene calls start() when user selects mode
@@ -55,23 +56,24 @@ export interface GameMode {
   /**
    * Start the mode - build UI, initialize state, start animations.
    * Called when user selects this mode from the selection screen.
+   * Can be async to support asset loading.
    */
-  start(): void;
-  
+  start(): void | Promise<void>;
+
   /**
    * Stop the mode - cleanup resources, kill animations.
    * Called when user navigates back to selection screen.
    * Must clean up ALL resources to prevent memory leaks.
    */
   stop(): void;
-  
+
   /**
    * Handle window resize events.
    * Called by parent scene's onResize().
    * Optional - implement if mode has responsive UI.
    */
   onResize?(): void;
-  
+
   /**
    * Handle device state changes (phone/tablet/desktop, portrait/landscape).
    * Called by parent scene's onDeviceStateChange().
@@ -79,4 +81,3 @@ export interface GameMode {
    */
   onDeviceStateChange?(newState: DeviceState, oldState: DeviceState): void;
 }
-

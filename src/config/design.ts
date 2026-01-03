@@ -1,6 +1,6 @@
 /**
  * Design Constants
- * 
+ *
  * Centralized configuration for UI dimensions, spacing, and styling.
  * All values are in pixels at base scale (the menu container scales to fit).
  */
@@ -38,8 +38,7 @@ export const DESIGN = {
 } as const;
 
 /** Orange brand color used for title bar and accents */
-export const BRAND_ORANGE = 0xF7941D;
+export const BRAND_ORANGE = 0xf7941d;
 
 /** Orange color for "CLICK TO PLAY" text/icon */
 export const ACCENT_ORANGE = '#FF671D';
-

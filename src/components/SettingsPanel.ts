@@ -69,7 +69,7 @@ interface RowDefinition {
 
 /**
  * SettingsPanel
- * 
+ *
  * A reusable PixiJS container for settings controls (sliders, toggles, buttons).
  * Features:
  * - Auto-sizing background panel
@@ -119,11 +119,11 @@ export class SettingsPanel extends Container {
    */
   addRow(cells: SettingsCell[], yPosition: number): void {
     const { gap } = this.config;
-    
+
     // Calculate total row width
     const cellWidths = cells.map(c => c.getWidth());
     const totalWidth = cellWidths.reduce((a, b) => a + b, 0) + gap * (cells.length - 1);
-    
+
     // Position cells horizontally (centered)
     let x = -totalWidth / 2;
     for (let i = 0; i < cells.length; i++) {
@@ -152,11 +152,11 @@ export class SettingsPanel extends Container {
    */
   addPortraitGrid(cellPairs: [SettingsCell, SettingsCell][], cellWidth: number): void {
     const { gap, rowHeight } = this.config;
-    
+
     // Calculate column positions
     const col1X = -(gap / 2 + cellWidth);
     const col2X = gap / 2;
-    
+
     // Center vertically
     const totalHeight = rowHeight * cellPairs.length;
     const yOffset = -totalHeight / 2 + rowHeight / 2;
@@ -231,4 +231,3 @@ export class SettingsPanel extends Container {
     this.updatePanel();
   }
 }
-

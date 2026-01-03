@@ -2,7 +2,7 @@ import type { Ticker } from 'pixi.js';
 
 /**
  * FPSCounter
- * 
+ *
  * Displays frames-per-second as an HTML overlay in the top-left corner.
  * Uses a DOM element (not PixiJS text) so it's always visible regardless
  * of scene state or canvas transformations.
@@ -47,4 +47,3 @@ export class FPSCounter {
     this.element.remove();
   }
 }
-

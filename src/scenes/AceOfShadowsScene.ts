@@ -1,27 +1,26 @@
 import { Container, Spritesheet } from 'pixi.js';
-import type { Application } from '../core/Application';
-import { BaseGameScene, type DeviceState } from './BaseGameScene';
-import type { GameMode, GameModeContext } from '../modes/GameMode';
-import { AceOfShadowsModeLiteral, AceOfShadowsModeCreative } from '../modes/aceOfShadows';
-import { ModeSelectionPanel } from '../components/ModeSelectionPanel';
-import {
-  SELECTION_PANEL,
-  SCENE_LAYOUT,
-} from '../config/aceOfShadowsSettings';
 
-// Spritesheet assets
 import spritesheetJson from '../assets/sprites/ultimate-minimalist-card-asset/ace-of-shadows-spritesheet.json';
 import spritesheetPng from '../assets/sprites/ultimate-minimalist-card-asset/ace-of-shadows-spritesheet.png';
+import { ModeSelectionPanel } from '../components/ModeSelectionPanel';
+import { SELECTION_PANEL, SCENE_LAYOUT } from '../config/aceOfShadowsSettings';
+import type { Application } from '../core/Application';
+import { AceOfShadowsModeLiteral, AceOfShadowsModeCreative } from '../modes/aceOfShadows';
+import type { GameMode, GameModeContext } from '../modes/GameMode';
+
+import { BaseGameScene, type DeviceState } from './BaseGameScene';
+
+// Spritesheet assets
 
 /** Scene mode */
 type SceneMode = 'selection' | 'literal' | 'creative';
 
 /**
  * AceOfShadowsScene
- * 
+ *
  * Task 1: Create 144 sprites stacked on top of each other like cards in a deck.
  * Every 1 second, the top card moves to a different stack with a 2-second animation.
- * 
+ *
  * This scene acts as a coordinator:
  * - Loads shared resources (spritesheet, background)
  * - Displays mode selection screen
@@ -31,21 +30,21 @@ type SceneMode = 'selection' | 'literal' | 'creative';
 export class AceOfShadowsScene extends BaseGameScene {
   /** Loaded spritesheet (shared across modes) */
   private spritesheet: Spritesheet | null = null;
-  
+
   /** Current scene mode - tracked for debugging */
   private currentMode: SceneMode = 'selection';
-  
+
   /** Get current scene mode (for debugging/testing) */
   get mode(): SceneMode {
     return this.currentMode;
   }
-  
+
   /** Active game mode instance */
   private activeMode: GameMode | null = null;
-  
+
   /** Container for mode content */
   private modeContainer: Container | null = null;
-  
+
   /** Selection screen container */
   private selectionContainer: Container | null = null;
 
@@ -69,7 +68,7 @@ export class AceOfShadowsScene extends BaseGameScene {
 
   onResize(): void {
     super.onResize(); // Handles background layout + device state change detection
-    
+
     // Forward resize to active mode
     if (this.activeMode?.onResize) {
       this.activeMode.onResize();
@@ -85,13 +84,13 @@ export class AceOfShadowsScene extends BaseGameScene {
 
   onStop(): void {
     super.onStop(); // Clears GSAP timeline in base class
-    
+
     // Stop active mode
     if (this.activeMode) {
       this.activeMode.stop();
       this.activeMode = null;
     }
-    
+
     // Reset mode for next entry
     this.currentMode = 'selection';
   }
@@ -116,16 +115,17 @@ export class AceOfShadowsScene extends BaseGameScene {
     // Create mode selection panel using config and reusable component
     const panel = new ModeSelectionPanel({
       title: 'Ace of Shadows',
-      description: 'Create 144 sprites stacked like cards in a deck. Every 1 second, the top card moves to a different stack with a 2-second animation.',
+      description:
+        'Create 144 sprites stacked like cards in a deck. Every 1 second, the top card moves to a different stack with a 2-second animation.',
       buttons: [
         {
           label: '📋 Literal Task',
-          backgroundColor: 0x2E7D32,
+          backgroundColor: 0x2e7d32,
           onClick: () => this.startMode('literal'),
         },
         {
           label: '✨ Creative Take',
-          backgroundColor: 0x7B1FA2,
+          backgroundColor: 0x7b1fa2,
           onClick: () => this.startMode('creative'),
         },
       ],
@@ -188,7 +188,7 @@ export class AceOfShadowsScene extends BaseGameScene {
     } else {
       this.activeMode = new AceOfShadowsModeCreative(context);
     }
-    
+
     this.activeMode.start();
   }
 
@@ -225,24 +225,24 @@ export class AceOfShadowsScene extends BaseGameScene {
    */
   private createModeContext(): GameModeContext {
     const self = this;
-    
+
     return {
       container: this.modeContainer!,
       spritesheet: this.spritesheet!,
       gameContainer: this.gameContainer,
-      
+
       getDeviceState: () => self.getDeviceState(),
-      
+
       requestLayout: () => self.requestLayout(),
-      
-      setDesignBounds: (bounds) => self.setDesignBounds(bounds),
-      
+
+      setDesignBounds: bounds => self.setDesignBounds(bounds),
+
       getScreenSize: () => ({
         width: self.app.width || window.innerWidth,
         height: self.app.height || window.innerHeight,
       }),
-      
-      generateTexture: (graphics) => self.app.pixi.renderer.generateTexture(graphics),
+
+      generateTexture: graphics => self.app.pixi.renderer.generateTexture(graphics),
     };
   }
 
@@ -261,7 +261,7 @@ export class AceOfShadowsScene extends BaseGameScene {
       spritesheetPng,
       'ace-of-shadows'
     );
-    
+
     // Set background from spritesheet using base class method
     const bgTexture = this.spritesheet.textures['castle-bg.png'];
     if (bgTexture) {

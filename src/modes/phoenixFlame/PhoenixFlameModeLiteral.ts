@@ -1,19 +1,39 @@
-import { AnimatedSprite, Assets, Container, Graphics, Spritesheet, Text, TextStyle, Texture, Ticker } from 'pixi.js';
-import type { GameMode, GameModeContext } from '../GameMode';
-import { killTweensRecursive } from '../../core';
-import { FLAME_CONFIG, DESIGN_BOUNDS, SPRITE_BUDGET, PARTICLE_CONFIG } from '../../config/phoenixFlameSettings';
-import { PhoenixFlameSettingsPanel } from './PhoenixFlameSettingsPanel';
-import type { GameSettingsPanelConfig, SettingsPanelContext } from '../../components/GameSettingsPanel';
-import { LandedSpriteManager } from './LandedSpriteManager';
-import { FlyingParticlePool, type FlyingParticle } from './FlyingParticlePool';
+import {
+  AnimatedSprite,
+  Assets,
+  Container,
+  Graphics,
+  Spritesheet,
+  Text,
+  TextStyle,
+  Texture,
+  Ticker,
+} from 'pixi.js';
 
-// Import spritesheet assets (HQ version)
 import flameSheetJson from '../../assets/sprites/flame-hq/flames-hq-spritesheet.json';
 import flameSheetPng from '../../assets/sprites/flame-hq/flames-hq.png';
+import type {
+  GameSettingsPanelConfig,
+  SettingsPanelContext,
+} from '../../components/GameSettingsPanel';
+import {
+  FLAME_CONFIG,
+  DESIGN_BOUNDS,
+  SPRITE_BUDGET,
+  PARTICLE_CONFIG,
+} from '../../config/phoenixFlameSettings';
+import { killTweensRecursive } from '../../core';
+import type { GameMode, GameModeContext } from '../GameMode';
+
+import { FlyingParticlePool, type FlyingParticle } from './FlyingParticlePool';
+import { LandedSpriteManager } from './LandedSpriteManager';
+import { PhoenixFlameSettingsPanel } from './PhoenixFlameSettingsPanel';
+
+// Import spritesheet assets (HQ version)
 
 /**
  * PhoenixFlameModeLiteral
- * 
+ *
  * Senior implementation of Task 3:
  * - Animated flame using spritesheet
  * - Max 10 sprites on screen (1 main + 6 flying + 3 landed)
@@ -21,40 +41,40 @@ import flameSheetPng from '../../assets/sprites/flame-hq/flames-hq.png';
  * - TrajectorySlotManager for spacing (no physics calculation per spawn)
  * - GSAP handles death animation via LandedSpriteManager
  * - Settings panel for real-time adjustments
- * 
+ *
  * Architecture:
  * - Stage 1: FlyingParticlePool handles spawn → flight physics → floor detection
  * - Stage 2: LandedSpriteManager handles landing → pause → shrink → recycle
- * 
+ *
  * Key principle: Validate BEFORE create. Never spawn then kill.
  */
 export class PhoenixFlameModeLiteral implements GameMode {
   /** Static cache for flame spritesheet (prevents re-parsing warnings) */
   private static spritesheetCache: Spritesheet | null = null;
-  
+
   protected readonly context: GameModeContext;
   protected content: Container | null = null;
   protected flameSprite: AnimatedSprite | null = null;
   protected spritesheet: Spritesheet | null = null;
   protected settingsPanel: PhoenixFlameSettingsPanel | null = null;
-  
+
   // Particle system (senior approach: object pooling)
   protected flyingPool: FlyingParticlePool | null = null;
   protected particleContainer: Container | null = null;
   protected landedContainer: Container | null = null;
   protected landedManager: LandedSpriteManager | null = null;
   protected flameTextures: Texture[] = [];
-  
+
   // Spawn control
-  protected spawnTimer: number = 0;
+  protected spawnTimer = 0;
   protected spawnInterval: number = 1000 / PARTICLE_CONFIG.spawnRate; // ms between spawns
-  
+
   // Threshold tracking for variety
   protected angleThreshold: number = PARTICLE_CONFIG.angleThreshold;
   protected speedThreshold: number = PARTICLE_CONFIG.speedThreshold;
-  protected lastSpawnAngle: number = -90;
+  protected lastSpawnAngle = -90;
   protected lastSpawnSpeed: number = PARTICLE_CONFIG.speed;
-  
+
   // Settings (controlled by sliders)
   protected currentScale: number = FLAME_CONFIG.scale;
   protected particlePeakScale: number = PARTICLE_CONFIG.peakScale;
@@ -67,11 +87,11 @@ export class PhoenixFlameModeLiteral implements GameMode {
   protected gravity: number = PARTICLE_CONFIG.gravity;
   protected bigFlamePivotOffset: number = PARTICLE_CONFIG.bigFlamePivotOffset;
   protected spawnHeightRange: number = PARTICLE_CONFIG.spawnHeightRange;
-  
+
   // Debug: pivot marker
   protected pivotMarker: Graphics | null = null;
-  protected showPivotMarker: boolean = false;
-  
+  protected showPivotMarker = false;
+
   // Design dimensions for layout
   protected readonly designWidth = DESIGN_BOUNDS.width;
   protected readonly designHeight = DESIGN_BOUNDS.height;
@@ -114,23 +134,23 @@ export class PhoenixFlameModeLiteral implements GameMode {
     if (!this.flameSprite) {
       return { x: this.designWidth / 2, y: this.designHeight / 2 };
     }
-    
+
     const x = this.flameSprite.x;
     const pivotY = this.flameSprite.y;
     const randomOffset = Math.random() * this.spawnHeightRange;
     const y = pivotY - randomOffset;
-    
+
     return { x, y };
   }
 
   /** Override to provide custom floor Y position */
   protected getFlameBaseY(): number {
     if (!this.flameSprite) return this.designHeight * 0.75;
-    
+
     const textureHeight = FLAME_CONFIG.frameHeight;
     const scaledHeight = textureHeight * this.currentScale;
     const anchorY = this.flameSprite.anchor.y;
-    
+
     // Base is below anchor by (1 - anchorY) * scaledHeight
     return this.flameSprite.y + (1 - anchorY) * scaledHeight;
   }
@@ -171,28 +191,28 @@ export class PhoenixFlameModeLiteral implements GameMode {
 
     // Hide loading
     this.hideLoading();
-    
+
     // Create main flame
     this.createFlame();
-    
+
     // Create particle containers (in front of main flame)
     this.particleContainer = new Container();
     this.landedContainer = new Container();
     this.content.addChild(this.particleContainer);
     this.content.addChild(this.landedContainer);
-    
+
     // Initialize landed sprite manager
     this.createLandedManager();
 
     // Initialize flying particle pool
     this.createFlyingPool();
-    
+
     // Start the game loop
     this.startGameLoop();
-    
+
     // Create settings panel
     this.createSettingsPanel();
-    
+
     // Start sprite counter update loop (updates panel's counter display)
     this.startCounterUpdate();
   }
@@ -200,24 +220,24 @@ export class PhoenixFlameModeLiteral implements GameMode {
   stop(): void {
     // Stop game loop
     this.stopGameLoop();
-    
+
     // Kill all GSAP animations recursively BEFORE destroying
     if (this.content) {
       killTweensRecursive(this.content);
     }
-    
+
     // Destroy flying pool
     if (this.flyingPool) {
       this.flyingPool.destroy();
       this.flyingPool = null;
     }
-    
+
     // Destroy landed manager
     if (this.landedManager) {
       this.landedManager.destroy();
       this.landedManager = null;
     }
-    
+
     // Stop animation
     if (this.flameSprite) {
       this.flameSprite.stop();
@@ -230,7 +250,7 @@ export class PhoenixFlameModeLiteral implements GameMode {
       this.particleContainer.destroy({ children: true });
       this.particleContainer = null;
     }
-    
+
     if (this.landedContainer) {
       this.landedContainer.destroy({ children: true });
       this.landedContainer = null;
@@ -251,7 +271,7 @@ export class PhoenixFlameModeLiteral implements GameMode {
     // Don't destroy cached spritesheet - just clear reference
     // The static cache keeps it alive for scene re-entry
     this.spritesheet = null;
-    
+
     this.flameTextures = [];
   }
 
@@ -266,12 +286,15 @@ export class PhoenixFlameModeLiteral implements GameMode {
   private showLoading(): void {
     if (!this.content) return;
 
-    const loadingText = new Text('🔥 Igniting...', new TextStyle({
-      fontFamily: 'Georgia, serif',
-      fontSize: 32,
-      fill: '#ff6600',
-      align: 'center',
-    }));
+    const loadingText = new Text(
+      '🔥 Igniting...',
+      new TextStyle({
+        fontFamily: 'Georgia, serif',
+        fontSize: 32,
+        fill: '#ff6600',
+        align: 'center',
+      })
+    );
     loadingText.name = 'loading';
     loadingText.anchor.set(0.5);
     loadingText.x = this.designWidth / 2;
@@ -294,15 +317,22 @@ export class PhoenixFlameModeLiteral implements GameMode {
 
   private async loadSpritesheet(): Promise<void> {
     // Use cached spritesheet if available (prevents "already had an entry" warnings)
+    // Check static class cache first, then Assets cache for HMR resilience
     if (PhoenixFlameModeLiteral.spritesheetCache) {
       this.spritesheet = PhoenixFlameModeLiteral.spritesheetCache;
+    } else if (Assets.cache.has('phoenix-flame-spritesheet')) {
+      // Recover from HMR - spritesheet was parsed before but static cache was reset
+      this.spritesheet = Assets.cache.get('phoenix-flame-spritesheet') as Spritesheet;
+      PhoenixFlameModeLiteral.spritesheetCache = this.spritesheet;
     } else {
       const texture = await Assets.load(flameSheetPng);
       this.spritesheet = new Spritesheet(texture, flameSheetJson);
       await this.spritesheet.parse();
       PhoenixFlameModeLiteral.spritesheetCache = this.spritesheet;
+      // Also store in Assets cache for HMR resilience
+      Assets.cache.set('phoenix-flame-spritesheet', this.spritesheet);
     }
-    
+
     // Cache flame textures for pools
     const frames = this.spritesheet.animations['flame'];
     if (frames) {
@@ -327,20 +357,20 @@ export class PhoenixFlameModeLiteral implements GameMode {
     this.flameSprite = new AnimatedSprite(frames);
     this.flameSprite.animationSpeed = FLAME_CONFIG.animationSpeed;
     this.flameSprite.scale.set(this.currentScale);
-    
+
     // Center on screen horizontally
     this.flameSprite.x = this.designWidth / 2;
-    
+
     // Set anchor from bigFlamePivotOffset (same as runtime slider behavior)
     this.updateFlameAnchor();
 
     // Start animation
     this.flameSprite.play();
     this.content.addChild(this.flameSprite);
-    
+
     // Create pivot marker (for debugging)
     this.createPivotMarker();
-    
+
     if (import.meta.env.DEV) console.log('[PhoenixFlame] Main flame created (1 sprite)');
   }
 
@@ -349,11 +379,11 @@ export class PhoenixFlameModeLiteral implements GameMode {
    */
   private createPivotMarker(): void {
     if (!this.content) return;
-    
+
     this.pivotMarker = new Graphics();
     this.pivotMarker.visible = this.showPivotMarker;
     this.content.addChild(this.pivotMarker);
-    
+
     this.updatePivotMarker();
   }
 
@@ -363,30 +393,30 @@ export class PhoenixFlameModeLiteral implements GameMode {
    */
   private updatePivotMarker(): void {
     if (!this.pivotMarker || !this.flameSprite) return;
-    
+
     // Clear and redraw
     this.pivotMarker.clear();
-    
+
     // The pivot IS at sprite.y (that's what the anchor means)
     const pivotY = this.flameSprite.y;
-    
+
     // Draw crosshair
     const size = 20;
     const thickness = 3;
-    
+
     // Horizontal line (orange)
-    this.pivotMarker.lineStyle(thickness, 0xFF671D, 1);
+    this.pivotMarker.lineStyle(thickness, 0xff671d, 1);
     this.pivotMarker.moveTo(-size, 0);
     this.pivotMarker.lineTo(size, 0);
-    
+
     // Vertical line (orange)
     this.pivotMarker.moveTo(0, -size);
     this.pivotMarker.lineTo(0, size);
-    
+
     // Circle outline
-    this.pivotMarker.lineStyle(2, 0xFFFFFF, 0.8);
+    this.pivotMarker.lineStyle(2, 0xffffff, 0.8);
     this.pivotMarker.drawCircle(0, 0, size * 0.7);
-    
+
     // Position the marker at the actual pivot (anchor) position
     this.pivotMarker.x = this.flameSprite.x;
     this.pivotMarker.y = pivotY;
@@ -405,8 +435,11 @@ export class PhoenixFlameModeLiteral implements GameMode {
       PARTICLE_CONFIG.maxFlyingParticles,
       PARTICLE_CONFIG.animationSpeed
     );
-    
-    if (import.meta.env.DEV) console.log(`[PhoenixFlame] FlyingPool created (max ${PARTICLE_CONFIG.maxFlyingParticles} flying sprites)`);
+
+    if (import.meta.env.DEV)
+      console.log(
+        `[PhoenixFlame] FlyingPool created (max ${PARTICLE_CONFIG.maxFlyingParticles} flying sprites)`
+      );
   }
 
   private createLandedManager(): void {
@@ -418,8 +451,11 @@ export class PhoenixFlameModeLiteral implements GameMode {
       PARTICLE_CONFIG.maxLandedSprites,
       PARTICLE_CONFIG.animationSpeed
     );
-    
-    if (import.meta.env.DEV) console.log(`[PhoenixFlame] LandedManager created (max ${PARTICLE_CONFIG.maxLandedSprites} landed sprites)`);
+
+    if (import.meta.env.DEV)
+      console.log(
+        `[PhoenixFlame] LandedManager created (max ${PARTICLE_CONFIG.maxLandedSprites} landed sprites)`
+      );
   }
 
   // ============================================================
@@ -428,30 +464,30 @@ export class PhoenixFlameModeLiteral implements GameMode {
 
   private startGameLoop(): void {
     let lastTime = performance.now();
-    
+
     const gameLoop = () => {
       const now = performance.now();
       const deltaMs = now - lastTime;
       const deltaSec = deltaMs / 1000;
       lastTime = now;
-      
+
       // Update flying particles physics
       this.updateFlyingParticles(deltaSec);
-      
+
       // Check for floor collisions
       this.checkFloorCollisions();
-      
+
       // Try to spawn new particles
       this.updateSpawning(deltaMs);
     };
-    
+
     // Add to shared ticker
     Ticker.shared.add(gameLoop);
-    
+
     // Store for cleanup
     (this as { _gameLoop?: () => void })._gameLoop = gameLoop;
   }
-  
+
   private stopGameLoop(): void {
     const loop = (this as { _gameLoop?: () => void })._gameLoop;
     if (loop) {
@@ -462,18 +498,18 @@ export class PhoenixFlameModeLiteral implements GameMode {
 
   private updateFlyingParticles(deltaSec: number): void {
     if (!this.flyingPool) return;
-    
+
     // Update physics for all flying particles
     this.flyingPool.update(deltaSec, this.gravity, 270);
-    
+
     // Update scale animation (grow from initial to peak)
     for (const particle of this.flyingPool.getActive()) {
       const lifeProgress = particle.age / particle.maxAge;
-      
+
       // Scale: small → peak quickly (at 5% of lifetime)
       const initialScale = PARTICLE_CONFIG.initialScale * this.currentScale;
       const peakScale = this.particlePeakScale * this.currentScale;
-      
+
       let currentScale: number;
       if (lifeProgress < 0.05) {
         // Grow to peak in first 5%
@@ -483,23 +519,23 @@ export class PhoenixFlameModeLiteral implements GameMode {
         // Hold at peak
         currentScale = peakScale;
       }
-      
+
       particle.sprite.scale.set(currentScale);
     }
   }
 
   private checkFloorCollisions(): void {
     if (!this.flyingPool) return;
-    
+
     const floorY = this.getFlameBaseY() + this.floorOffset;
-    
+
     // Check each active particle for floor collision
     for (const particle of this.flyingPool.getActive()) {
       // Check if particle bottom has hit the floor
       const textureHeight = FLAME_CONFIG.frameHeight;
       const halfHeight = (textureHeight * particle.sprite.scale.x) / 2;
       const particleBottomY = particle.sprite.y + halfHeight;
-      
+
       if (particleBottomY >= floorY) {
         this.onParticleLand(particle, floorY);
       }
@@ -508,7 +544,7 @@ export class PhoenixFlameModeLiteral implements GameMode {
 
   private updateSpawning(deltaMs: number): void {
     this.spawnTimer += deltaMs;
-    
+
     if (this.spawnTimer >= this.spawnInterval) {
       this.spawnTimer -= this.spawnInterval;
       this.trySpawnParticle();
@@ -521,41 +557,41 @@ export class PhoenixFlameModeLiteral implements GameMode {
    */
   private trySpawnParticle(): boolean {
     if (!this.flyingPool || !this.hasMainCharacter()) return false;
-    
+
     // 1. Check sprite budget
     const flyingCount = this.flyingPool.getActiveCount();
     const landedCount = this.landedManager?.getActiveCount() ?? 0;
     const totalSprites = 1 + flyingCount + landedCount; // 1 = main flame
-    
+
     if (totalSprites >= SPRITE_BUDGET.max) {
       return false; // Budget exhausted - don't spawn
     }
-    
+
     // 2. Generate angle (with optional threshold for variety)
     const halfSpread = this.angleSpread / 2;
     const minAngle = -90 - halfSpread;
     const maxAngle = -90 + halfSpread;
     const angle = this.generateAngleWithThreshold(minAngle, maxAngle);
-    
+
     // 3. Generate speed (with optional threshold for variety)
     const baseSpeed = PARTICLE_CONFIG.speed * this.heightMultiplier;
     const speedVariation = PARTICLE_CONFIG.speedVariation;
     const speed = this.generateSpeedWithThreshold(baseSpeed, speedVariation);
-    
+
     // 4. Store for next spawn's threshold check
     this.lastSpawnAngle = angle;
     this.lastSpawnSpeed = speed;
-    
+
     // 5. Acquire particle from pool
     const particle = this.flyingPool.acquire();
     if (!particle) {
       return false; // Pool exhausted
     }
-    
+
     // 6. Configure particle
     const spawnPos = this.getSpawnPosition();
     const angleRad = (angle * Math.PI) / 180;
-    
+
     particle.sprite.x = spawnPos.x;
     particle.sprite.y = spawnPos.y;
     particle.velocityX = Math.cos(angleRad) * speed;
@@ -563,35 +599,35 @@ export class PhoenixFlameModeLiteral implements GameMode {
     particle.slotId = -1;
     particle.maxAge = PARTICLE_CONFIG.lifetime;
     particle.sprite.scale.set(PARTICLE_CONFIG.initialScale * this.currentScale);
-    
+
     // 7. Notify subclass of spawn (e.g., for animations)
     this.onParticleSpawned();
-    
+
     return true;
   }
-  
+
   /**
    * Generate angle respecting threshold (minimum difference from last angle)
    */
   private generateAngleWithThreshold(minAngle: number, maxAngle: number): number {
     const range = maxAngle - minAngle;
-    
+
     if (this.angleThreshold <= 0 || range <= 0) {
       // No threshold - fully random
       return minAngle + Math.random() * range;
     }
-    
+
     // Generate angle that's at least threshold degrees away from last
     const attempts = 10; // Max attempts to find valid angle
     for (let i = 0; i < attempts; i++) {
       const angle = minAngle + Math.random() * range;
       const diff = Math.abs(angle - this.lastSpawnAngle);
-      
+
       if (diff >= this.angleThreshold) {
         return angle;
       }
     }
-    
+
     // Fallback: force opposite side of last angle
     const centerAngle = (minAngle + maxAngle) / 2;
     if (this.lastSpawnAngle > centerAngle) {
@@ -602,30 +638,30 @@ export class PhoenixFlameModeLiteral implements GameMode {
       return centerAngle + Math.random() * (range / 2);
     }
   }
-  
+
   /**
    * Generate speed respecting threshold (minimum difference from last speed)
    */
   private generateSpeedWithThreshold(baseSpeed: number, variation: number): number {
     const minSpeed = baseSpeed - variation;
     const maxSpeed = baseSpeed + variation;
-    
+
     if (this.speedThreshold <= 0) {
       // No threshold - fully random
       return minSpeed + Math.random() * (maxSpeed - minSpeed);
     }
-    
+
     // Generate speed that's at least threshold away from last
     const attempts = 10; // Max attempts to find valid speed
     for (let i = 0; i < attempts; i++) {
       const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
       const diff = Math.abs(speed - this.lastSpawnSpeed);
-      
+
       if (diff >= this.speedThreshold) {
         return speed;
       }
     }
-    
+
     // Fallback: force opposite side of last speed
     if (this.lastSpawnSpeed > baseSpeed) {
       // Last was fast, go slow
@@ -643,22 +679,22 @@ export class PhoenixFlameModeLiteral implements GameMode {
    */
   protected onParticleLand(particle: FlyingParticle, floorY: number): void {
     if (!this.landedManager || !this.flyingPool) return;
-    
+
     const x = particle.sprite.x;
     const scale = particle.sprite.scale.x;
-    
+
     // Release flying particle back to pool
     this.flyingPool.release(particle);
-    
+
     // Check sprite budget before spawning landed sprite
     const flyingCount = this.flyingPool.getActiveCount();
     const landedCount = this.landedManager.getActiveCount();
     const totalSprites = 1 + flyingCount + landedCount;
-    
+
     if (totalSprites >= SPRITE_BUDGET.max) {
       return; // Budget exhausted
     }
-    
+
     // Spawn landed sprite with pause and shrink animation
     this.landedManager.spawnLanded(
       x,
@@ -677,16 +713,16 @@ export class PhoenixFlameModeLiteral implements GameMode {
   private startCounterUpdate(): void {
     const updateCounter = () => {
       if (!this.settingsPanel) return;
-      
+
       const flying = this.flyingPool?.getActiveCount() ?? 0;
       const landed = this.landedManager?.getActiveCount() ?? 0;
       const total = 1 + flying + landed; // 1 = main flame
-      
+
       this.settingsPanel.updateSpriteCounter(total, flying, landed);
-      
+
       requestAnimationFrame(updateCounter);
     };
-    
+
     requestAnimationFrame(updateCounter);
   }
 
@@ -751,13 +787,8 @@ export class PhoenixFlameModeLiteral implements GameMode {
       onSpeedThresholdChange: (value: number) => this.updateSpeedThreshold(value),
     };
 
-    this.settingsPanel = new PhoenixFlameSettingsPanel(
-      config,
-      panelContext,
-      settings,
-      callbacks
-    );
-    
+    this.settingsPanel = new PhoenixFlameSettingsPanel(config, panelContext, settings, callbacks);
+
     // Attach the panel to screen bounds (not inside the scaled/rotated game content).
     // We mount it to the scene root container: rotationWrapper.parent == BaseGameScene.container.
     const sceneRoot = this.context.gameContainer.parent?.parent;
@@ -848,27 +879,27 @@ export class PhoenixFlameModeLiteral implements GameMode {
 
   private updateFlameAnchor(): void {
     if (!this.flameSprite) return;
-    
+
     // Convert pixel offset to anchor ratio
     // Offset is in local flame pixels (texture-relative)
     // anchor.y: 0 = top, 1 = bottom
     const textureHeight = FLAME_CONFIG.frameHeight;
     const offsetRatio = this.bigFlamePivotOffset / textureHeight;
     const newAnchorY = Math.max(0, Math.min(1, 1.0 - offsetRatio));
-    
+
     // Update anchor - this IS the scaling pivot
     this.flameSprite.anchor.set(0.5, newAnchorY);
-    
+
     // Update position (pivot point stays at same screen location)
     this.updateFlamePosition();
   }
 
   private updateFlamePosition(): void {
     if (!this.flameSprite) return;
-    
+
     // The PIVOT POINT should be at this screen position
     const pivotScreenY = this.designHeight * 0.75 + this.flameYOffset;
-    
+
     // sprite.y = where the anchor point appears on screen
     this.flameSprite.y = pivotScreenY;
   }

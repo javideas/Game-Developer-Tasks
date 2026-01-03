@@ -1,9 +1,21 @@
-import { Container, Sprite, Assets, Spritesheet, Texture, BlurFilter, Text, TextStyle, Graphics, type ISpritesheetData } from 'pixi.js';
-import type { Scene } from '../core/SceneManager';
-import type { Application } from '../core/Application';
+import gsap from 'gsap';
+import {
+  Container,
+  Sprite,
+  Assets,
+  Spritesheet,
+  Texture,
+  BlurFilter,
+  Text,
+  TextStyle,
+  Graphics,
+  type ISpritesheetData,
+} from 'pixi.js';
+
 import { Button } from '../components/Button';
 import { SCENE_LAYOUT } from '../config/sharedSettings';
-import gsap from 'gsap';
+import type { Application } from '../core/Application';
+import type { Scene } from '../core/SceneManager';
 
 export interface BaseGameSceneOptions {
   /** Scene title (shown in browser tab) */
@@ -19,7 +31,7 @@ export interface BaseGameSceneOptions {
   contentPadding?: { left: number; right: number; top: number; bottom: number };
   /** Optional max scale clamp for responsive layout (defaults to 1.5) */
   maxScale?: number;
-  /** 
+  /**
    * Preferred orientation for this scene.
    * - 'landscape': auto-rotate content when device is in portrait
    * - 'portrait': auto-rotate content when device is in landscape
@@ -39,13 +51,13 @@ const SCENE_DESIGN = {
 
 /**
  * BaseGameScene
- * 
+ *
  * Abstract base class for game scenes. Provides:
  * - Fullscreen background image (optional, covers entire screen)
  * - Browser tab title updates to game name
  * - Back to menu button (floating, top-left)
  * - Responsive content container that scales to fit
- * 
+ *
  * Extend this class and override buildContent() to add game logic.
  */
 /** Explicit design bounds for consistent layout */
@@ -73,19 +85,19 @@ export interface BackgroundOptions {
 
 export abstract class BaseGameScene implements Scene {
   public readonly container: Container;
-  
+
   protected app: Application;
   protected options: BaseGameSceneOptions;
-  
+
   /** Fullscreen background sprite */
   private background: Sprite | null = null;
-  
+
   /** Background options for texture-based backgrounds */
   private backgroundOptions: BackgroundOptions = {};
-  
+
   /** Scalable content container for game elements */
   protected gameContainer: Container;
-  
+
   /** Back button (floating UI, not scaled) */
   protected backButton: Button | null = null;
 
@@ -101,7 +113,7 @@ export abstract class BaseGameScene implements Scene {
   /** Track device state for responsive rebuild detection */
   private lastDeviceState: DeviceState | null = null;
 
-  /** 
+  /**
    * Explicit design bounds for layout calculation.
    * Set via setDesignBounds() - never uses getLocalBounds().
    */
@@ -114,7 +126,7 @@ export abstract class BaseGameScene implements Scene {
 
   /** Wrapper container for orientation rotation (contains gameContainer) */
   private rotationWrapper: Container;
-  
+
   /** Whether content is currently rotated for orientation preference */
   private isRotatedForOrientation = false;
 
@@ -122,7 +134,7 @@ export abstract class BaseGameScene implements Scene {
     this.app = app;
     this.options = options;
     this.originalTitle = document.title;
-    
+
     this.container = new Container();
     this.rotationWrapper = new Container();
     this.gameContainer = new Container();
@@ -146,7 +158,7 @@ export abstract class BaseGameScene implements Scene {
     const screenW = window.innerWidth;
     const screenH = window.innerHeight;
     const useCompactPadding = Math.min(screenW, screenH) < SCENE_LAYOUT.largePaddingBreakpoint;
-    
+
     return useCompactPadding ? SCENE_LAYOUT.screenPaddingPhone : SCENE_LAYOUT.screenPadding;
   }
 
@@ -154,7 +166,7 @@ export abstract class BaseGameScene implements Scene {
    * Get current device state for responsive layout decisions.
    * Uses CSS pixels (window.innerWidth/Height) for consistent detection.
    * Single source of truth for phone/tablet/desktop detection.
-   * 
+   *
    * When content is rotated for orientation preference, this returns the
    * "effective" state (e.g., phoneLandscape even if device is in portrait).
    */
@@ -162,12 +174,12 @@ export abstract class BaseGameScene implements Scene {
     const screenW = window.innerWidth;
     const screenH = window.innerHeight;
     const isPhone = Math.min(screenW, screenH) < SCENE_LAYOUT.phoneBreakpoint;
-    
+
     // If content is rotated, flip the portrait/landscape detection
-    const isPortrait = this.isRotatedForOrientation 
-      ? screenW > screenH  // Inverted when rotated
+    const isPortrait = this.isRotatedForOrientation
+      ? screenW > screenH // Inverted when rotated
       : screenH > screenW;
-    
+
     if (isPhone && isPortrait) return 'phonePortrait';
     if (isPhone && !isPortrait) return 'phoneLandscape';
     return 'desktop';
@@ -209,7 +221,7 @@ export abstract class BaseGameScene implements Scene {
     });
 
     this.container.addChild(this.subModeBackButton);
-    
+
     // Position using shared method (handles rotation)
     this.positionBackButton();
   }
@@ -298,11 +310,11 @@ export abstract class BaseGameScene implements Scene {
   async onStart(): Promise<void> {
     // Update browser tab title
     document.title = this.options.title;
-    
+
     // Build in order: background → rotationWrapper (contains gameContainer) → UI
     this.buildBackground();
     this.container.addChild(this.rotationWrapper);
-    
+
     // Await buildContent to ensure async operations complete before layout
     try {
       await this.buildContent();
@@ -311,7 +323,7 @@ export abstract class BaseGameScene implements Scene {
       this.showErrorState(error instanceof Error ? error.message : 'Failed to load content');
       // Continue with layout so back button is accessible
     }
-    
+
     this.buildBackButton();
     this.layoutScene();
     // Must be AFTER layoutScene() because layoutScene decides whether we're rotated.
@@ -324,7 +336,7 @@ export abstract class BaseGameScene implements Scene {
     this.layoutScene();
     this.positionBackButton();
     this.positionFPSCounter();
-    
+
     // Detect device state changes (phone/tablet/desktop, portrait/landscape)
     const currentState = this.getDeviceState();
     if (this.lastDeviceState !== null && this.lastDeviceState !== currentState) {
@@ -409,15 +421,15 @@ export abstract class BaseGameScene implements Scene {
       onClick: this.options.onBack,
     });
     this.backButton.alpha = 0.4;
-    
+
     // Make it more visible on hover
-    this.backButton.on('pointerover', () => { 
-      if (this.backButton) this.backButton.alpha = 0.9; 
+    this.backButton.on('pointerover', () => {
+      if (this.backButton) this.backButton.alpha = 0.9;
     });
-    this.backButton.on('pointerout', () => { 
-      if (this.backButton) this.backButton.alpha = 0.4; 
+    this.backButton.on('pointerout', () => {
+      if (this.backButton) this.backButton.alpha = 0.4;
     });
-    
+
     this.container.addChild(this.backButton);
     this.positionBackButton();
   }
@@ -450,9 +462,7 @@ export abstract class BaseGameScene implements Scene {
       const b = btn.getBounds();
 
       const desiredX = padding;
-      const desiredY = corner === 'topLeft'
-        ? padding
-        : (screenH - padding - b.height);
+      const desiredY = corner === 'topLeft' ? padding : screenH - padding - b.height;
 
       // Move so its bounds top-left matches the desired corner position.
       btn.x += desiredX - b.x;
@@ -464,13 +474,18 @@ export abstract class BaseGameScene implements Scene {
       let dy = 0;
       if (b2.x < padding) dx += padding - b2.x;
       if (b2.y < padding) dy += padding - b2.y;
-      if (b2.x + b2.width > screenW - padding) dx -= (b2.x + b2.width) - (screenW - padding);
-      if (b2.y + b2.height > screenH - padding) dy -= (b2.y + b2.height) - (screenH - padding);
-      if (dx !== 0 || dy !== 0) { btn.x += dx; btn.y += dy; }
+      if (b2.x + b2.width > screenW - padding) dx -= b2.x + b2.width - (screenW - padding);
+      if (b2.y + b2.height > screenH - padding) dy -= b2.y + b2.height - (screenH - padding);
+      if (dx !== 0 || dy !== 0) {
+        btn.x += dx;
+        btn.y += dy;
+      }
     };
 
     // Only one is visible at a time, but we can position both safely.
-    const corner: 'topLeft' | 'bottomLeft' = this.isRotatedForOrientation ? 'bottomLeft' : 'topLeft';
+    const corner: 'topLeft' | 'bottomLeft' = this.isRotatedForOrientation
+      ? 'bottomLeft'
+      : 'topLeft';
     if (this.backButton) placeInCorner(this.backButton, corner);
     if (this.subModeBackButton) placeInCorner(this.subModeBackButton, corner);
   }
@@ -530,11 +545,11 @@ export abstract class BaseGameScene implements Scene {
   private shouldRotateForOrientation(): boolean {
     const pref = this.options.preferredOrientation ?? 'any';
     if (pref === 'any') return false;
-    
+
     const screenW = this.app.width || window.innerWidth;
     const screenH = this.app.height || window.innerHeight;
     const isPortrait = screenH > screenW;
-    
+
     // Rotate if preference doesn't match current orientation
     if (pref === 'landscape' && isPortrait) return true;
     if (pref === 'portrait' && !isPortrait) return true;
@@ -553,16 +568,16 @@ export abstract class BaseGameScene implements Scene {
     const physicalH = this.app.height || window.innerHeight;
     let screenW = physicalW;
     let screenH = physicalH;
-    
+
     // If dimensions are invalid, skip layout
     if (screenW <= 0 || screenH <= 0) {
       return;
     }
-    
+
     // Check if we need to rotate for orientation preference
     const needsRotation = this.shouldRotateForOrientation();
     this.isRotatedForOrientation = needsRotation;
-    
+
     if (needsRotation) {
       // Rotate the wrapper 90° to the RIGHT (clockwise)
       // (Pixi rotation is CCW-positive, so clockwise is negative)
@@ -582,15 +597,15 @@ export abstract class BaseGameScene implements Scene {
       this.rotationWrapper.x = 0;
       this.rotationWrapper.y = 0;
     }
-    
+
     // Use dynamic responsive padding (phone vs desktop/tablet)
     // This is the single source of truth for device-specific padding
     const p = this.getResponsivePadding();
 
     // Available space (fullscreen with per-side padding)
     // When rotated, swap padding left/right with top/bottom conceptually
-    const availableW = screenW - (needsRotation ? (p.top + p.bottom) : (p.left + p.right));
-    const availableH = screenH - (needsRotation ? (p.left + p.right) : (p.top + p.bottom));
+    const availableW = screenW - (needsRotation ? p.top + p.bottom : p.left + p.right);
+    const availableH = screenH - (needsRotation ? p.left + p.right : p.top + p.bottom);
 
     // Use explicit design bounds (never getLocalBounds - that's inconsistent)
     const { x: boundsX, y: boundsY, width: contentW, height: contentH } = this.designBounds;
@@ -606,11 +621,11 @@ export abstract class BaseGameScene implements Scene {
     // Center in the padded available rect
     const scaledW = contentW * scale;
     const scaledH = contentH * scale;
-    
+
     // Padding offsets (swap when rotated)
     const padLeft = needsRotation ? p.top : p.left;
     const padTop = needsRotation ? p.left : p.top;
-    
+
     this.gameContainer.x = padLeft + (availableW - scaledW) / 2 - boundsX * scale;
     this.gameContainer.y = padTop + (availableH - scaledH) / 2 - boundsY * scale;
   }
@@ -620,7 +635,7 @@ export abstract class BaseGameScene implements Scene {
    * Can be async for loading assets.
    */
   protected abstract buildContent(): void | Promise<void>;
-  
+
   /**
    * Display an error state when content fails to load.
    * Override in subclasses for custom error UI.
@@ -631,7 +646,7 @@ export abstract class BaseGameScene implements Scene {
     overlay.beginFill(0x000000, 0.7);
     overlay.drawRect(0, 0, SCENE_DESIGN.contentWidth, SCENE_DESIGN.contentHeight);
     overlay.endFill();
-    
+
     // Error text
     const style = new TextStyle({
       fontFamily: 'Arial',
@@ -645,7 +660,7 @@ export abstract class BaseGameScene implements Scene {
     errorText.anchor.set(0.5);
     errorText.x = SCENE_DESIGN.contentWidth / 2;
     errorText.y = SCENE_DESIGN.contentHeight / 2;
-    
+
     overlay.addChild(errorText);
     this.gameContainer.addChild(overlay);
   }
@@ -662,10 +677,10 @@ export abstract class BaseGameScene implements Scene {
     // Individual modes should handle their own GSAP cleanup via gsapCtx.revert()
     gsap.killTweensOf(this.gameContainer);
     gsap.killTweensOf(this.container);
-    
+
     // Restore original document title when leaving scene
     document.title = this.originalTitle;
-    
+
     // Reset FPS counter position (in case it was rotated)
     this.isRotatedForOrientation = false;
     this.positionFPSCounter();

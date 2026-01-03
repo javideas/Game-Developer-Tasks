@@ -17,7 +17,7 @@ export interface ToggleOptions {
 
 /**
  * Toggle
- * 
+ *
  * A PixiJS-based toggle/checkbox component.
  */
 export class Toggle extends Container {
@@ -40,12 +40,15 @@ export class Toggle extends Container {
     this.bg = new Graphics();
     this.knob = new Graphics();
     const fontSize = options.fontSize ?? 12;
-    this.labelText = new Text(options.label, new TextStyle({
-      fontFamily: 'Arial, sans-serif',
-      fontSize: fontSize,
-      fill: '#ffffff',
-      fontWeight: 'bold',
-    }));
+    this.labelText = new Text(
+      options.label,
+      new TextStyle({
+        fontFamily: 'Arial, sans-serif',
+        fontSize: fontSize,
+        fill: '#ffffff',
+        fontWeight: 'bold',
+      })
+    );
     this.labelText.resolution = 2;
 
     this.addChild(this.bg);
@@ -59,13 +62,13 @@ export class Toggle extends Container {
   private draw(): void {
     const isHorizontal = this.options.horizontal ?? false;
     const totalWidth = this.options.width ?? 200;
-    
+
     // Calculate track X position for horizontal layout
     const trackX = isHorizontal ? totalWidth - this.trackWidth : 0;
-    
+
     // Track background
     this.bg.clear();
-    this.bg.beginFill(this.currentValue ? 0xFF671D : 0x333333);
+    this.bg.beginFill(this.currentValue ? 0xff671d : 0x333333);
     this.bg.drawRoundedRect(trackX, 0, this.trackWidth, this.trackHeight, this.trackHeight / 2);
     this.bg.endFill();
 
@@ -76,8 +79,8 @@ export class Toggle extends Container {
     this.knob.endFill();
 
     // Position knob
-    const knobX = this.currentValue 
-      ? trackX + this.trackWidth - this.knobRadius - 2 
+    const knobX = this.currentValue
+      ? trackX + this.trackWidth - this.knobRadius - 2
       : trackX + this.knobRadius + 2;
     this.knob.x = knobX;
     this.knob.y = this.trackHeight / 2;
@@ -87,7 +90,7 @@ export class Toggle extends Container {
       // Label right-aligned, positioned just before the toggle (with small gap)
       const gap = 10;
       this.labelText.anchor.set(1, 0.5); // Right-align text
-      this.labelText.x = trackX - gap;   // Position label's right edge before toggle
+      this.labelText.x = trackX - gap; // Position label's right edge before toggle
       this.labelText.y = this.trackHeight / 2;
     } else {
       // Label above track (original behavior)
@@ -132,4 +135,3 @@ export class Toggle extends Container {
     this.draw();
   }
 }
-

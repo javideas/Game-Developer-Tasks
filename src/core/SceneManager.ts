@@ -2,7 +2,7 @@ import type { Application as PixiApplication, Container } from 'pixi.js';
 
 /**
  * Scene Interface
- * 
+ *
  * All scenes must implement this interface to work with SceneManager.
  */
 export interface Scene {
@@ -27,7 +27,7 @@ export interface Scene {
 
 /**
  * SceneManager
- * 
+ *
  * Handles scene lifecycle:
  * - Loading/unloading scenes
  * - Resize propagation
@@ -59,7 +59,7 @@ export class SceneManager {
     // Set and start new scene
     this.currentScene = scene;
     this.pixi.stage.addChild(scene.container);
-    
+
     try {
       // Await onStart if it returns a Promise
       await scene.onStart?.();
@@ -69,7 +69,7 @@ export class SceneManager {
       // Re-throw so callers can also handle if needed
       throw error;
     }
-    
+
     // Trigger resize after a frame to ensure dimensions are ready
     // This fixes initial centering issues on scene entry
     requestAnimationFrame(() => {
@@ -110,4 +110,3 @@ export class SceneManager {
     this.pixi.ticker.remove(this.update);
   }
 }
-

@@ -1,10 +1,15 @@
 import { Container, Text, TextStyle } from 'pixi.js';
-import { GameSettingsPanel, type GameSettingsPanelConfig, type SettingsPanelContext } from '../../components/GameSettingsPanel';
+
+import {
+  GameSettingsPanel,
+  type GameSettingsPanelConfig,
+  type SettingsPanelContext,
+} from '../../components/GameSettingsPanel';
 import { Slider } from '../../components/Slider';
 import { Toggle } from '../../components/Toggle';
-import type { DeviceState } from '../../scenes/BaseGameScene';
-import { SCENE_LAYOUT } from '../../config/sharedSettings';
 import { PARTICLE_CONFIG } from '../../config/phoenixFlameSettings';
+import { SCENE_LAYOUT } from '../../config/sharedSettings';
+import type { DeviceState } from '../../scenes/BaseGameScene';
 
 /**
  * Settings for Phoenix Flame mode
@@ -48,14 +53,14 @@ export interface PhoenixFlameSettingsCallbacks {
 
 /**
  * PhoenixFlameSettingsPanel
- * 
+ *
  * Settings UI for Phoenix Flame literal mode.
  * Positioned at the bottom of the screen.
  */
 export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
   private settings: PhoenixFlameSettings;
   private callbacks: PhoenixFlameSettingsCallbacks;
-  
+
   private scaleSlider: Slider | null = null;
   private particleScaleSlider: Slider | null = null;
   private heightSlider: Slider | null = null;
@@ -79,10 +84,10 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
     callbacks: PhoenixFlameSettingsCallbacks
   ) {
     super(config, context);
-    
+
     this.settings = settings;
     this.callbacks = callbacks;
-    
+
     // Rebuild now that settings are properly assigned
     this.content.removeChildren();
     this.buildControlsForState(context.getDeviceState());
@@ -103,15 +108,15 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
 
   private buildControlsForState(_state: DeviceState): void {
     this.content.removeChildren();
-    
+
     const { width: screenW, height: screenH } = this.context.getScreenSize();
     const isPhone = Math.min(screenW, screenH) < SCENE_LAYOUT.phoneBreakpoint;
-    
+
     const fontSize = isPhone ? 16 : 12;
     const sliderWidth = isPhone ? 160 : 130;
     const gapX = 15;
     const gapY = isPhone ? 55 : 45;
-    
+
     // Main flame scale slider (HQ flames are large, so smaller scale values)
     this.scaleSlider = new Slider({
       label: 'Big Flame',
@@ -123,12 +128,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 2,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.scale = value;
         this.callbacks.onScaleChange(value);
       },
     });
-    
+
     // Particle max scale slider
     this.particleScaleSlider = new Slider({
       label: 'Particle Scale',
@@ -140,12 +145,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 1,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.particleMaxScale = value;
         this.callbacks.onParticleMaxScaleChange(value);
       },
     });
-    
+
     // Height slider
     this.heightSlider = new Slider({
       label: 'Height',
@@ -157,12 +162,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 1,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.height = value;
         this.callbacks.onHeightChange(value);
       },
     });
-    
+
     // Spread slider
     this.spreadSlider = new Slider({
       label: 'Spread',
@@ -174,12 +179,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.spread = value;
         this.callbacks.onSpreadChange(value);
       },
     });
-    
+
     // Floor offset slider
     this.floorOffsetSlider = new Slider({
       label: 'Floor Offset',
@@ -191,12 +196,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.floorOffset = value;
         this.callbacks.onFloorOffsetChange(value);
       },
     });
-    
+
     // Flame Y offset slider
     this.flameYOffsetSlider = new Slider({
       label: 'Flame Y Pos',
@@ -208,12 +213,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.flameYOffset = value;
         this.callbacks.onFlameYOffsetChange(value);
       },
     });
-    
+
     // Landing pause slider
     this.landingPauseSlider = new Slider({
       label: 'Land Pause',
@@ -225,7 +230,7 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 1,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.landingPause = value;
         this.callbacks.onLandingPauseChange(value);
       },
@@ -242,12 +247,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.gravity = value;
         this.callbacks.onGravityChange(value);
       },
     });
-    
+
     // Shrink offset slider (adjusts where the shrink pivot is)
     this.shrinkOffsetSlider = new Slider({
       label: 'Shrink Offset',
@@ -259,12 +264,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.shrinkOffset = value;
         this.callbacks.onShrinkOffsetChange(value);
       },
     });
-    
+
     // Big flame pivot offset slider (adjusts where big flame scales from)
     this.bigFlamePivotSlider = new Slider({
       label: 'Flame Pivot',
@@ -276,12 +281,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.bigFlamePivotOffset = value;
         this.callbacks.onBigFlamePivotOffsetChange(value);
       },
     });
-    
+
     // Pivot marker toggle (debug visualization)
     this.pivotMarkerToggle = new Toggle({
       label: 'Show Pivot',
@@ -289,12 +294,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       horizontal: true,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.showPivotMarker = value;
         this.callbacks.onShowPivotMarkerChange(value);
       },
     });
-    
+
     // Spawn height range slider (how far up from pivot particles can spawn)
     this.spawnHeightRangeSlider = new Slider({
       label: 'Spawn Range',
@@ -306,12 +311,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.spawnHeightRange = value;
         this.callbacks.onSpawnHeightRangeChange(value);
       },
     });
-    
+
     // Angle threshold slider (0 = disabled, forces variety in angles)
     this.angleThresholdSlider = new Slider({
       label: 'Angle Thresh',
@@ -323,12 +328,12 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.angleThreshold = value;
         this.callbacks.onAngleThresholdChange(value);
       },
     });
-    
+
     // Speed threshold slider (0 = disabled, forces variety in speeds)
     this.speedThresholdSlider = new Slider({
       label: 'Speed Thresh',
@@ -340,54 +345,53 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
       decimals: 0,
       width: sliderWidth,
       fontSize,
-      onChange: (value) => {
+      onChange: value => {
         this.settings.speedThreshold = value;
         this.callbacks.onSpeedThresholdChange(value);
       },
     });
 
-    
     // Layout: 5 rows grid + counter row
     const cell1 = new Container();
     cell1.addChild(this.scaleSlider);
     this.content.addChild(cell1);
-    
+
     const cell2 = new Container();
     cell2.addChild(this.particleScaleSlider);
     this.content.addChild(cell2);
-    
+
     const cell3 = new Container();
     cell3.addChild(this.heightSlider);
     this.content.addChild(cell3);
-    
+
     const cell4 = new Container();
     cell4.addChild(this.spreadSlider);
     this.content.addChild(cell4);
-    
+
     const cell5 = new Container();
     cell5.addChild(this.floorOffsetSlider);
     this.content.addChild(cell5);
-    
+
     const cell6 = new Container();
     cell6.addChild(this.flameYOffsetSlider);
     this.content.addChild(cell6);
-    
+
     const cell7 = new Container();
     cell7.addChild(this.landingPauseSlider);
     this.content.addChild(cell7);
-    
+
     const cell8 = new Container();
     cell8.addChild(this.shrinkOffsetSlider!);
     this.content.addChild(cell8);
-    
+
     const cell9 = new Container();
     cell9.addChild(this.bigFlamePivotSlider!);
     this.content.addChild(cell9);
-    
+
     const cell10 = new Container();
     cell10.addChild(this.pivotMarkerToggle!);
     this.content.addChild(cell10);
-    
+
     const cell11 = new Container();
     cell11.addChild(this.spawnHeightRangeSlider!);
     this.content.addChild(cell11);
@@ -395,15 +399,15 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
     const cell12 = new Container();
     cell12.addChild(this.gravitySlider!);
     this.content.addChild(cell12);
-    
+
     const cell13 = new Container();
     cell13.addChild(this.angleThresholdSlider!);
     this.content.addChild(cell13);
-    
+
     const cell14 = new Container();
     cell14.addChild(this.speedThresholdSlider!);
     this.content.addChild(cell14);
-    
+
     // Position controls in 5 rows x 3 cols grid + counter row
     const cols = 3;
     const totalWidth = sliderWidth * cols + gapX * (cols - 1);
@@ -413,7 +417,7 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
     const row4Y = gapY * 3;
     const row5Y = gapY * 4;
     const counterRowY = gapY * 4.7; // Smaller gap for counter row
-    
+
     // Row 1: Big Flame, Flame Pivot, Particle Scale
     cell1.x = -totalWidth / 2;
     cell1.y = row1Y;
@@ -421,7 +425,7 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
     cell9.y = row1Y;
     cell2.x = -totalWidth / 2 + (sliderWidth + gapX) * 2;
     cell2.y = row1Y;
-    
+
     // Row 2: Height, Spread, Floor Offset
     cell3.x = -totalWidth / 2;
     cell3.y = row2Y;
@@ -429,7 +433,7 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
     cell4.y = row2Y;
     cell5.x = -totalWidth / 2 + (sliderWidth + gapX) * 2;
     cell5.y = row2Y;
-    
+
     // Row 3: Flame Y Pos, Land Pause, Shrink Offset
     cell6.x = -totalWidth / 2;
     cell6.y = row3Y;
@@ -437,7 +441,7 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
     cell7.y = row3Y;
     cell8.x = -totalWidth / 2 + (sliderWidth + gapX) * 2;
     cell8.y = row3Y;
-    
+
     // Row 4: Spawn Range, Gravity, Show Pivot
     cell11.x = -totalWidth / 2;
     cell11.y = row4Y;
@@ -445,7 +449,7 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
     cell12.y = row4Y;
     cell10.x = -totalWidth / 2 + (sliderWidth + gapX) * 2;
     cell10.y = row4Y;
-    
+
     // Row 5: Angle Thresh, Speed Thresh
     cell13.x = -totalWidth / 2;
     cell13.y = row5Y;
@@ -476,7 +480,7 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
    */
   public updateSpriteCounter(total: number, flying: number, landed: number): void {
     if (!this.spriteCounterText) return;
-    
+
     // Color code based on usage (green = good, yellow = high, red = at limit)
     const color = total >= 10 ? 0xff4444 : total >= 8 ? 0xffaa00 : 0x44ff44;
     this.spriteCounterText.style.fill = color;
@@ -488,10 +492,10 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
    */
   public override scaleToFit(): void {
     const { width: screenW, height: screenH } = this.context.getScreenSize();
-    
+
     // Reset scale to measure
     this.scale.set(1);
-    
+
     // Place panel in the design top-left, under the floating back button.
     // Back button uses ~10px padding and ~36px height; add a little extra separation.
     const marginLeft = 10;
@@ -511,8 +515,14 @@ export class PhoenixFlameSettingsPanel extends GameSettingsPanel {
 
     // Clamp to screen bounds so it stays attached to the screen (even on tiny screens)
     const padding = 8;
-    targetX = Math.max(padding + scaledBounds.width / 2, Math.min(screenW - padding - scaledBounds.width / 2, targetX));
-    targetY = Math.max(padding + scaledBounds.height / 2, Math.min(screenH - padding - scaledBounds.height / 2, targetY));
+    targetX = Math.max(
+      padding + scaledBounds.width / 2,
+      Math.min(screenW - padding - scaledBounds.width / 2, targetX)
+    );
+    targetY = Math.max(
+      padding + scaledBounds.height / 2,
+      Math.min(screenH - padding - scaledBounds.height / 2, targetY)
+    );
 
     this.x = targetX;
     this.y = targetY;

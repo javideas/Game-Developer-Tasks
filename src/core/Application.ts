@@ -1,10 +1,11 @@
 import { Application as PixiApplication } from 'pixi.js';
+
 import { FPSCounter } from './FPSCounter';
 import { SceneManager } from './SceneManager';
 
 /**
  * Application
- * 
+ *
  * Wrapper around PixiJS Application that handles:
  * - Canvas initialization and DOM insertion
  * - Responsive resizing
@@ -81,4 +82,3 @@ export class Application {
     this.pixi.destroy(true);
   }
 }
-

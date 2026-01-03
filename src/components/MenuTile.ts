@@ -1,4 +1,5 @@
 import { Container, Graphics, Sprite, Text, TextStyle, Rectangle } from 'pixi.js';
+
 import { DESIGN, ACCENT_ORANGE } from '../config/design';
 
 /**
@@ -19,7 +20,7 @@ export interface MenuTileOptions {
 
 /**
  * MenuTile
- * 
+ *
  * A clickable game thumbnail tile with:
  * - Rounded corners
  * - Drop shadow
@@ -159,4 +160,3 @@ export class MenuTile extends Container {
     this.scale.set(0.99);
   };
 }
-

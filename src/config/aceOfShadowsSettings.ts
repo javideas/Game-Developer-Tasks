@@ -1,6 +1,6 @@
 /**
  * Ace of Shadows Settings Configuration
- * 
+ *
  * Centralized configuration for card animation parameters.
  * All timing values in seconds, distances in pixels.
  */
@@ -146,29 +146,29 @@ export { SCENE_LAYOUT } from './sharedSettings';
  * Explicit design bounds per mode.
  * These are used for consistent, predictable layout (instead of dynamic getLocalBounds).
  * All values are in design coordinates.
- * 
+ *
  * Layout reference:
  * - Selection: Title at y=100, buttons at y=250/350 (centered at x=400)
  * - Literal: Decks at x=200/600, settings at y=540, arc peak at ~80
  * - Creative: Placeholder text centered at 400,300
  */
 export const DESIGN_BOUNDS = {
-  /** 
+  /**
    * Selection screen: title + mode picker buttons in panel
    * NOTE: These are fallback values - actual bounds are calculated dynamically
    * from content + padding in buildSelectionScreen()
    */
   selection: {
-    x: 140,      // Fallback left edge
-    y: 70,       // Fallback top edge
-    width: 520,  // Fallback width
+    x: 140, // Fallback left edge
+    y: 70, // Fallback top edge
+    width: 520, // Fallback width
     height: 300, // Fallback height
   },
   /** Literal mode: card stacks + settings panel + arc height */
   literal: {
-    x: 100,      // Left edge (left deck at x=200, minus some margin)
-    y: 80,       // Top edge (accounts for arc height ~140 above deck top)
-    width: 600,  // Content width (decks at 200 and 600, plus margins)
+    x: 100, // Left edge (left deck at x=200, minus some margin)
+    y: 80, // Top edge (accounts for arc height ~140 above deck top)
+    width: 600, // Content width (decks at 200 and 600, plus margins)
     height: 520, // Content height (from arc peak to settings panel bottom)
   },
   /** Creative mode: TriPeaks solitaire layout */
@@ -218,7 +218,7 @@ export interface TableauLayout {
    * 'd' = diagonal (rotation computed from rowRotations / rotationAngle)
    * If provided, should match cardsPerRow[row] length for each row.
    */
-  rowCardOrientations?: Array<Array<'v' | 'd'>>;
+  rowCardOrientations?: ('v' | 'd')[][];
   /**
    * Optional rows that should be rotated (diagonal corner cards).
    * Contains row indices.
@@ -252,8 +252,8 @@ export interface TableauLayout {
   rowCardYOffsets?: number[][];
 }
 
-/** 
- * Predefined layouts for the tableau 
+/**
+ * Predefined layouts for the tableau
  */
 export const TABLEAU_LAYOUTS: Record<TableauLayoutType, TableauLayout> = {
   /** Castle: Traditional pyramid shape (3-4-5-6) */
@@ -266,7 +266,7 @@ export const TABLEAU_LAYOUTS: Record<TableauLayoutType, TableauLayout> = {
     horizontalOverlap: 0.78,
     topYOffset: 0,
   },
-  /** 
+  /**
    * Hexagon: Diamond grid with corner cards
    * - 5 rows, 4 columns conceptually
    * - Row 0: 2 cards visible (center columns 1,2)
@@ -279,8 +279,8 @@ export const TABLEAU_LAYOUTS: Record<TableauLayoutType, TableauLayout> = {
     name: 'Hexagon',
     rows: 5,
     cardsPerRow: [2, 2, 4, 2, 2],
-    initialFaceUpRows: 1,  // Only use rowFaceUp for control
-    rowFaceUp: [true, false, true, false, true],  // Corner rows are face-down
+    initialFaceUpRows: 1, // Only use rowFaceUp for control
+    rowFaceUp: [true, false, true, false, true], // Corner rows are face-down
     verticalOverlap: 1.08, // >1 = no overlap, slight margin between rows
     horizontalOverlap: 1.05, // Slight horizontal margin
     topYOffset: -50, // Move up above stock/waste area
@@ -312,12 +312,12 @@ export const TABLEAU_LAYOUTS: Record<TableauLayoutType, TableauLayout> = {
     rows: 4,
     cardsPerRow: [3, 7, 6, 3],
     initialFaceUpRows: 1,
-    rowFaceUp: [false, false, false, true],  // ONLY bottom row face-up
+    rowFaceUp: [false, false, false, true], // ONLY bottom row face-up
     // Spacing - more separation between cards
-    verticalOverlap: 0.45,   // Slightly more vertical space
+    verticalOverlap: 0.45, // Slightly more vertical space
     horizontalOverlap: 0.72, // More horizontal space (less overlap)
-    topYOffset: 100,         // Move whole layout up
-    rowYFactors: [0, 0.85, 1.60, 2.75], // More space before bottom row
+    topYOffset: 100, // Move whole layout up
+    rowYFactors: [0, 0.85, 1.6, 2.75], // More space before bottom row
     // Row spreads: 2nd row tighter, bottom row much wider for margin
     rowSpread: [1.6, 1.4, 1.4, 2.2], // Bottom row very wide (2.2) for separation
     // Orientation mask per row
@@ -333,10 +333,10 @@ export const TABLEAU_LAYOUTS: Record<TableauLayoutType, TableauLayout> = {
     // Row 2: center level, edges drop down EVEN MORE for arc
     // Row 3: no offset (bottom row)
     rowCardYOffsets: [
-      [-15, -30, -15],                    // Row 0: center up more
-      [35, 10, 0, -5, 0, 10, 35],         // Row 1: edges down for arc
-      [65, 35, 0, 0, 35, 65],             // Row 2: edges down MUCH more (65px)
-      [0, 0, 0],                          // Row 3: no offset
+      [-15, -30, -15], // Row 0: center up more
+      [35, 10, 0, -5, 0, 10, 35], // Row 1: edges down for arc
+      [65, 35, 0, 0, 35, 65], // Row 2: edges down MUCH more (65px)
+      [0, 0, 0], // Row 3: no offset
     ],
     // We'll rotate only the diagonal cards (per-card) using these as max edge angles per row
     rotatedRows: [0, 1, 2],
@@ -346,7 +346,7 @@ export const TABLEAU_LAYOUTS: Record<TableauLayoutType, TableauLayout> = {
       Math.PI / 4.2, // row 0 (top): stronger
       Math.PI / 5.2, // row 1: medium
       Math.PI / 6.2, // row 2: slightly softer
-      0,             // row 3: verticals
+      0, // row 3: verticals
     ],
     // Z-order: top rows behind, bottom rows in front
     behindRows: [0, 1, 2],
@@ -361,16 +361,16 @@ export const TRIPEAKS_CONFIG = {
   // Card dimensions
   /** Card scale relative to spritesheet texture */
   cardScale: 0.58,
-  
+
   // Default layout (can be changed at runtime)
   defaultLayout: 'hexagon' as TableauLayoutType,
-  
+
   // Tableau position
   /** Tableau center X in design coordinates */
   tableauCenterX: 400,
   /** Tableau top Y in design coordinates */
   tableauTopY: 115,
-  
+
   // Player area (stock + waste)
   /** Stock pile X position */
   stockX: 160,
@@ -378,13 +378,13 @@ export const TRIPEAKS_CONFIG = {
   wasteX: 400,
   /** Player area Y position */
   playerAreaY: 485,
-  
+
   // Stock pile visual
   /** Number of visible stacked cards in stock pile */
   stockVisibleCards: 5,
   /** Offset between stacked stock cards */
   stockStackOffset: 2,
-  
+
   // Shadow (reuse from literal mode)
   shadow: {
     offsetX: 2,
@@ -444,4 +444,3 @@ export function getDefaultSettings(): AceOfShadowsState {
     keepSettings: TOGGLE_DEFAULTS.keepSettings,
   };
 }
-

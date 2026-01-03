@@ -1,4 +1,5 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+
 import { Button } from './Button';
 
 /**
@@ -61,7 +62,7 @@ export interface ModeSelectionPanelConfig {
 
 /**
  * ModeSelectionPanel
- * 
+ *
  * A reusable panel for selecting between different modes (e.g., "Literal Task" vs "Creative Take").
  * Features:
  * - Centered title with configurable text
@@ -253,4 +254,3 @@ export class ModeSelectionPanel extends Container {
     };
   }
 }
-

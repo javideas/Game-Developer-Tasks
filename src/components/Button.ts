@@ -21,7 +21,7 @@ export interface ButtonOptions {
 
 /**
  * Button
- * 
+ *
  * A simple, reusable button component with hover effects.
  */
 export class Button extends Container {
@@ -95,4 +95,3 @@ export class Button extends Container {
     this.options.onClick();
   };
 }
-

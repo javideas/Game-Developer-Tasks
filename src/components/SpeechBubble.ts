@@ -1,5 +1,5 @@
-import { Container, Graphics, Texture, Sprite, Assets } from 'pixi.js';
 import { NineSlicePlane } from '@pixi/mesh-extras';
+import { Container, Graphics, Texture, Sprite, Assets } from 'pixi.js';
 
 /**
  * SpeechBubble Options
@@ -42,7 +42,7 @@ export interface SpeechBubbleOptions {
 
 /**
  * SpeechBubble Component
- * 
+ *
  * A reusable speech bubble using 9-slice scaling or graphics fallback
  */
 export class SpeechBubble extends Container {
@@ -52,10 +52,10 @@ export class SpeechBubble extends Container {
   private isReady = false;
   private readyPromise: Promise<void> | null = null;
   private readyResolve: (() => void) | null = null;
-  
+
   constructor(options: SpeechBubbleOptions) {
     super();
-    
+
     // Default values
     this.options = {
       tailSide: 'right',
@@ -63,11 +63,11 @@ export class SpeechBubble extends Container {
       textureDefaultTailSide: 'left',
       ...options,
     };
-    
+
     // Start async initialization
     this.init();
   }
-  
+
   private async init(): Promise<void> {
     // If texture is provided (string path or Texture), load and use 9-slice
     if (this.options.texture) {
@@ -84,49 +84,43 @@ export class SpeechBubble extends Container {
       // Fallback to graphics drawing
       this.createGraphics();
     }
-    
+
     this.isReady = true;
     if (this.readyResolve) {
       this.readyResolve();
     }
   }
-  
+
   /**
    * Wait for the bubble to be ready (texture loaded)
    */
   public async waitForReady(): Promise<void> {
     if (this.isReady) return;
-    
+
     if (!this.readyPromise) {
-      this.readyPromise = new Promise((resolve) => {
+      this.readyPromise = new Promise(resolve => {
         this.readyResolve = resolve;
       });
     }
-    
+
     return this.readyPromise;
   }
-  
+
   private createNineSlice(): void {
     if (!this.texture) return;
-    
+
     // Remove old background
     if (this.background) {
       this.removeChild(this.background);
       this.background.destroy();
     }
-    
+
     const { width, height, sliceMargins, borderScale = 1 } = this.options;
     const [left, top, right, bottom] = sliceMargins || [20, 20, 20, 20];
-    
+
     // Create 9-slice plane
-    const nineSlice = new NineSlicePlane(
-      this.texture,
-      left,
-      top,
-      right,
-      bottom
-    );
-    
+    const nineSlice = new NineSlicePlane(this.texture, left, top, right, bottom);
+
     // To make borders appear thinner, we render at a larger internal size
     // and then scale the mesh down. The corners stay at their original pixel
     // size in the mesh but get scaled down visually.
@@ -134,14 +128,14 @@ export class SpeechBubble extends Container {
     const internalMultiplier = 1 / borderScale;
     nineSlice.width = width * internalMultiplier;
     nineSlice.height = height * internalMultiplier;
-    
+
     this.applyNineSliceFlip(nineSlice, borderScale);
-    
+
     this.background = nineSlice;
     this.addChild(nineSlice);
   }
 
-  private applyNineSliceFlip(nineSlice: NineSlicePlane, borderScale: number = 1): void {
+  private applyNineSliceFlip(nineSlice: NineSlicePlane, borderScale = 1): void {
     const desired = this.options.tailSide || 'right';
     const textureDefault = this.options.textureDefaultTailSide || 'left';
     const shouldFlip = desired !== textureDefault;
@@ -155,26 +149,26 @@ export class SpeechBubble extends Container {
       nineSlice.x = 0;
     }
   }
-  
+
   private createGraphics(): void {
     // Remove old background
     if (this.background) {
       this.removeChild(this.background);
       this.background.destroy();
     }
-    
+
     const graphics = new Graphics();
     this.background = graphics;
     this.addChild(graphics);
     this.draw();
   }
-  
+
   /**
    * Draw the speech bubble (graphics fallback)
    */
   private draw(): void {
     if (!(this.background instanceof Graphics)) return;
-    
+
     const { width, height } = this.options;
     const bgColor = 0xfff8e7;
     const borderColor = 0xc4a574;
@@ -187,35 +181,34 @@ export class SpeechBubble extends Container {
       topOffset: 15,
     };
     const tailSide = this.options.tailSide || 'right';
-    
+
     this.background.clear();
     this.background.lineStyle(borderWidth, borderColor);
     this.background.beginFill(bgColor);
-    
+
     const r = radius;
     const tailY = tail.topOffset;
     const halfBase = tail.baseWidth / 2;
-    
+
     if (tailSide === 'right') {
       // Right tail: simple triangle from right side
       this.background.moveTo(r, 0);
       this.background.lineTo(width - r, 0);
       this.background.arcTo(width, 0, width, r, r);
       this.background.lineTo(width, tailY - halfBase);
-      
+
       // Simple triangle pointing right
       const tipX = width + tail.tipOutX;
       const tipY = tailY;
-      
+
       this.background.lineTo(tipX, tipY);
       this.background.lineTo(width, tailY + halfBase);
       this.background.lineTo(width, height - r);
-      
     } else {
       // Left tail: simple triangle from left side (mirrored)
       const tipX = -tail.tipOutX;
       const tipY = tailY;
-      
+
       this.background.moveTo(0, tailY - halfBase);
       this.background.lineTo(tipX, tipY);
       this.background.lineTo(0, tailY + halfBase);
@@ -223,36 +216,36 @@ export class SpeechBubble extends Container {
       this.background.arcTo(0, 0, r, 0, r);
       this.background.lineTo(width - r, 0);
     }
-    
+
     // Complete the rectangle
     if (tailSide === 'left') {
       this.background.arcTo(width, 0, width, r, r);
     }
-    
+
     if (tailSide === 'left') {
       this.background.lineTo(width, height - r);
     }
-    
+
     this.background.arcTo(width, height, width - r, height, r);
     this.background.lineTo(r, height);
     this.background.arcTo(0, height, 0, height - r, r);
-    
+
     if (tailSide === 'right') {
       this.background.lineTo(0, r);
       this.background.arcTo(0, 0, r, 0, r);
     }
-    
+
     this.background.closePath();
     this.background.endFill();
   }
-  
+
   /**
    * Update the tail side
    */
   public setTailSide(side: 'left' | 'right'): void {
     if (this.options.tailSide !== side) {
       this.options.tailSide = side;
-      
+
       if (this.background instanceof NineSlicePlane) {
         const borderScale = this.options.borderScale ?? 1;
         this.applyNineSliceFlip(this.background, borderScale);
@@ -261,14 +254,14 @@ export class SpeechBubble extends Container {
       }
     }
   }
-  
+
   /**
    * Update size
    */
   public setSize(width: number, height: number): void {
     this.options.width = width;
     this.options.height = height;
-    
+
     if (this.background instanceof NineSlicePlane) {
       const borderScale = this.options.borderScale ?? 1;
       const internalMultiplier = 1 / borderScale;
@@ -279,7 +272,7 @@ export class SpeechBubble extends Container {
       this.draw();
     }
   }
-  
+
   /**
    * Get the tail tip position (for positioning name badge)
    */
@@ -295,7 +288,7 @@ export class SpeechBubble extends Container {
       // Otherwise mirror around the bubble width.
       const shouldMirror = (tailSide || 'right') !== textureDefault;
       return {
-        x: shouldMirror ? (width - tip.x) : tip.x,
+        x: shouldMirror ? width - tip.x : tip.x,
         y: tip.y,
       };
     }
@@ -309,4 +302,3 @@ export class SpeechBubble extends Container {
     return { x: -tail.tipOutX, y: tailY };
   }
 }
-
