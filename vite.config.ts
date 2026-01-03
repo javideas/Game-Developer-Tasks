@@ -5,7 +5,7 @@ export default defineConfig({
     include: [
       'pixi.js',
       '@pixi/core',
-      '@pixi/display', 
+      '@pixi/display',
       '@pixi/settings',
       '@pixi/events',
       '@pixi/graphics',
@@ -17,6 +17,21 @@ export default defineConfig({
       '@esotericsoftware/spine-pixi-v7',
       '@esotericsoftware/spine-core',
     ],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split vendor libraries into separate chunks
+        manualChunks: {
+          'vendor-pixi': ['pixi.js'],
+          'vendor-gsap': ['gsap'],
+          'vendor-spine': [
+            '@esotericsoftware/spine-pixi-v7',
+            '@esotericsoftware/spine-core',
+          ],
+        },
+      },
+    },
   },
 });
 
