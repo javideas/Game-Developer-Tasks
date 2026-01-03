@@ -625,6 +625,128 @@ https://visualgpt.io/background-remover
 ![bg-ai-remover](screenshots/bg-ai-remover.png)
 ---
 
+## 🧪 Development Tooling
+
+This project includes a complete quality assurance pipeline:
+
+### Added/Modified Files
+
+```
+# ESLint + Prettier (Code Quality)
+eslint.config.js          # ESLint v9 flat config with TypeScript
+.prettierrc               # Formatting rules
+.prettierignore           # Files excluded from formatting
+
+# Vitest (Testing)
+vitest.config.ts          # Test configuration with coverage
+src/__tests__/
+├── setup.ts              # WebGL/browser mocks for PixiJS
+├── helpers/
+│   └── testUtils.ts      # Mock factories and utilities
+└── unit/
+    ├── components/
+    │   └── Button.test.ts
+    └── config/
+        ├── sharedSettings.test.ts
+        └── aceOfShadowsSettings.test.ts
+
+# CI/CD (GitHub Actions)
+.github/
+├── workflows/
+│   └── ci.yml            # Lint → Test → Build → Deploy pipeline
+└── dependabot.yml        # Automated dependency updates
+
+# Modified
+package.json              # Added devDependencies + scripts
+tsconfig.json             # Excluded test files from build
+.gitignore                # Added coverage/ directory
+```
+
+### Available Scripts
+
+#### Development
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with hot reload at `localhost:5173` |
+| `npm run build` | Create production build in `dist/` folder |
+| `npm run preview` | Preview production build locally before deploying |
+
+#### Quality Checks
+
+| Command | Description |
+|---------|-------------|
+| `npm run lint` | Check code for errors and style issues using ESLint |
+| `npm run lint:fix` | Automatically fix all auto-fixable lint issues |
+| `npm run format` | Format all TypeScript files with Prettier |
+| `npm run format:check` | Verify all files are formatted (used by CI) |
+| `npm run typecheck` | Run TypeScript compiler without emitting (type checking only) |
+
+#### Testing
+
+| Command | Description |
+|---------|-------------|
+| `npm run test` | Run tests in watch mode (re-runs on file changes) |
+| `npm run test:run` | Run all tests once and exit |
+| `npm run test:coverage` | Run tests and generate coverage report |
+| `npm run test:ui` | Open interactive test UI in browser |
+
+### Test Coverage
+
+**What is coverage?** Coverage measures what percentage of your code is executed by tests.
+
+```bash
+npm run test:coverage
+```
+
+This generates:
+- **Terminal report** — Summary table in console
+- **HTML report** — Detailed view at `coverage/index.html`
+
+#### Coverage Metrics Explained
+
+| Metric | What it measures |
+|--------|------------------|
+| **Statements** | Individual code statements executed |
+| **Branches** | All paths in `if/else`, `switch`, ternary operators |
+| **Functions** | Functions that were called |
+| **Lines** | Physical lines of code executed |
+
+#### Current Coverage
+
+| Category | Coverage | Notes |
+|----------|----------|-------|
+| Config files | 100% | `sharedSettings.ts`, `aceOfShadowsSettings.ts` |
+| Components | ~4% | `Button.ts` fully tested |
+| Modes/Scenes | 0% | Visual components require complex mocking |
+
+> **Note:** Low coverage is expected for game code. PixiJS components require WebGL mocks, and visual testing is inherently difficult. The infrastructure is in place to add tests incrementally.
+
+### CI Pipeline
+
+On every push/PR to `main` or `develop`:
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Quality   │────▶│    Build    │────▶│   Deploy    │
+│             │     │             │     │ (main only) │
+│ • lint      │     │ • tsc       │     │             │
+│ • format    │     │ • vite      │     │ • gh-pages  │
+│ • typecheck │     │             │     │             │
+│ • test      │     │             │     │             │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+**Workflow:** `.github/workflows/ci.yml`
+
+| Job | Runs on | Purpose |
+|-----|---------|---------|
+| Quality | Every push/PR | Lint, format, typecheck, tests |
+| Build | After Quality passes | Create production bundle |
+| Deploy | Main branch only | Publish to GitHub Pages |
+
+---
+
 ## 📄 License
 
 MIT License
