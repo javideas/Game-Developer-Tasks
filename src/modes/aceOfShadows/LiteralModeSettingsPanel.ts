@@ -82,15 +82,22 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
   private callbacks: LiteralModeSettingsCallbacks;
 
   // Control references for relayout
-  private deckABtn: Container | null = null;
-  private deckBBtn: Container | null = null;
+  // NOTE: Do NOT use `= null` initializers here! They would overwrite values
+  // set during super() -> buildControls() due to JS class field init order.
+  private deckABtn!: Container | null;
+  private deckBBtn!: Container | null;
+
+  // Debug: unique ID to track instance
+  private readonly instanceId = Math.random().toString(36).substring(7);
 
   // Store button dimensions for proper updates
+  // These are safe to initialize because they're set again in buildControlsForState
   private deckButtonWidth = 55;
   private deckButtonHeight = 28;
 
   // Reactive active deck state
-  private _activeDeck: 'left' | 'right' = 'left';
+  // NOTE: Do NOT use initializer here either - it overwrites value set in buildControls
+  private _activeDeck!: 'left' | 'right';
 
   /** Get current active deck */
   public get activeDeck(): 'left' | 'right' {
@@ -147,9 +154,12 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     this._activeDeck = initialSettings.activeDeck;
 
     console.log('[DeckToggle] Panel constructed:', {
+      instanceId: this.instanceId,
       initialActiveDeck: initialSettings.activeDeck,
       _activeDeck: this._activeDeck,
       settingsActiveDeck: this.settings.activeDeck,
+      deckABtn: this.deckABtn ? 'exists' : 'NULL',
+      deckBBtn: this.deckBBtn ? 'exists' : 'NULL',
     });
 
     // Clean up temp storage
@@ -190,6 +200,12 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     settings: LiteralModeSettings,
     callbacks: LiteralModeSettingsCallbacks
   ): void {
+    // Initialize button refs to null at the start of each build
+    // This ensures they're set before class field initializers could overwrite them
+    this.deckABtn = null;
+    this.deckBBtn = null;
+    this._activeDeck = settings.activeDeck;
+
     const { width: screenW, height: screenH } = this.context.getScreenSize();
     const isPhone = Math.min(screenW, screenH) < SCENE_LAYOUT.phoneBreakpoint;
     const isPhonePortrait = deviceState === 'phonePortrait';
@@ -329,12 +345,22 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
       settings.activeDeck === 'left',
       () => {
         console.log('[DeckToggle] Deck A CLICKED - using ORIGINAL pattern');
-        console.log('[DeckToggle] BEFORE callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        console.log(
+          '[DeckToggle] BEFORE callback - deckABtn:',
+          this.deckABtn ? 'exists' : 'NULL',
+          'deckBBtn:',
+          this.deckBBtn ? 'exists' : 'NULL'
+        );
         // ORIGINAL WORKING PATTERN: direct assignment + callback + explicit update
         this.settings.activeDeck = 'left';
         this._activeDeck = 'left';
         callbacks.onResetDeck('left');
-        console.log('[DeckToggle] AFTER callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        console.log(
+          '[DeckToggle] AFTER callback - deckABtn:',
+          this.deckABtn ? 'exists' : 'NULL',
+          'deckBBtn:',
+          this.deckBBtn ? 'exists' : 'NULL'
+        );
         this.updateDeckToggleButtons();
         console.log('[DeckToggle] Deck A click complete');
       }
@@ -346,19 +372,30 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
       this.deckButtonHeight,
       settings.activeDeck === 'right',
       () => {
-        console.log('[DeckToggle] Deck B CLICKED - using ORIGINAL pattern');
-        console.log('[DeckToggle] BEFORE callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        console.log('[DeckToggle] Deck B CLICKED - instanceId:', this.instanceId);
+        console.log(
+          '[DeckToggle] BEFORE callback - deckABtn:',
+          this.deckABtn ? 'exists' : 'NULL',
+          'deckBBtn:',
+          this.deckBBtn ? 'exists' : 'NULL'
+        );
         // ORIGINAL WORKING PATTERN: direct assignment + callback + explicit update
         this.settings.activeDeck = 'right';
         this._activeDeck = 'right';
         callbacks.onResetDeck('right');
-        console.log('[DeckToggle] AFTER callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        console.log(
+          '[DeckToggle] AFTER callback - deckABtn:',
+          this.deckABtn ? 'exists' : 'NULL',
+          'deckBBtn:',
+          this.deckBBtn ? 'exists' : 'NULL'
+        );
         this.updateDeckToggleButtons();
         console.log('[DeckToggle] Deck B click complete');
       }
     );
 
     console.log('[DeckToggle] Buttons created:', {
+      instanceId: this.instanceId,
       deckABtn: !!this.deckABtn,
       deckBBtn: !!this.deckBBtn,
     });
@@ -603,5 +640,66 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
    */
   public getSettings(): LiteralModeSettings {
     return { ...this.settings };
+  }
+
+  /**
+   * Force update button colors by finding them in the content container.
+   * This is a workaround for class field initialization order issues.
+   */
+  public forceUpdateDeckButtons(activeDeck: 'left' | 'right'): void {
+    console.log('[DeckToggle] forceUpdateDeckButtons called with:', activeDeck);
+
+    // Update internal state
+    this._activeDeck = activeDeck;
+    this.settings.activeDeck = activeDeck;
+
+    // Find buttons by iterating through content children
+    // Buttons are inside SettingsCell containers
+    const updateButtonColor = (btn: Container, isActive: boolean) => {
+      const bg = (btn as { bgGraphics?: Graphics }).bgGraphics;
+      if (bg) {
+        bg.clear();
+        bg.beginFill(isActive ? 0xf7941d : 0x444444);
+        bg.drawRoundedRect(
+          -this.deckButtonWidth / 2,
+          -this.deckButtonHeight / 2,
+          this.deckButtonWidth,
+          this.deckButtonHeight,
+          6
+        );
+        bg.endFill();
+        bg.tint = 0xffffff;
+        (btn as { isActive?: boolean }).isActive = isActive;
+      }
+    };
+
+    // Search through all children to find the deck buttons
+    const findAndUpdateButtons = (container: Container) => {
+      for (const child of container.children) {
+        // Check if this is a SettingsCell containing a deck button
+        if (child instanceof Container) {
+          for (const grandchild of child.children) {
+            if (grandchild instanceof Container) {
+              const bg = (grandchild as { bgGraphics?: Graphics }).bgGraphics;
+              if (bg) {
+                // This is likely a deck button - check by looking for text
+                for (const greatGrandchild of grandchild.children) {
+                  if (greatGrandchild instanceof Text) {
+                    if (greatGrandchild.text === 'Deck A') {
+                      updateButtonColor(grandchild, activeDeck === 'left');
+                    } else if (greatGrandchild.text === 'Deck B') {
+                      updateButtonColor(grandchild, activeDeck === 'right');
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+
+    findAndUpdateButtons(this.content);
+    console.log('[DeckToggle] forceUpdateDeckButtons complete');
   }
 }

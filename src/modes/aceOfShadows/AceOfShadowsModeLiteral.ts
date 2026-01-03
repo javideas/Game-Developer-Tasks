@@ -1128,7 +1128,15 @@ export class AceOfShadowsModeLiteral implements GameMode {
           console.log('[DeckToggle] MODE activeDeck set to:', self.activeDeck);
           console.log('[DeckToggle] MODE calling resetAllCardsTo...');
           self.resetAllCardsTo(target);
-          console.log('[DeckToggle] MODE resetAllCardsTo complete, settingsPanel still exists:', !!self.settingsPanel);
+          console.log(
+            '[DeckToggle] MODE resetAllCardsTo complete, settingsPanel still exists:',
+            !!self.settingsPanel
+          );
+
+          // Force update button colors after reset (workaround for class field init issues)
+          if (self.settingsPanel) {
+            self.settingsPanel.forceUpdateDeckButtons(target);
+          }
         },
       }
     );
