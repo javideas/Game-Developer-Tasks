@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite';
 
-export default defineConfig({
-  // Base URL for GitHub Pages deployment
-  base: '/Game-Developer-Tasks/',
+export default defineConfig(({ command }) => ({
+  // Base URL: use repo name for production (GitHub Pages), root for dev
+  base: command === 'build' ? '/Game-Developer-Tasks/' : '/',
   optimizeDeps: {
     include: [
       'pixi.js',
@@ -35,5 +35,5 @@ export default defineConfig({
       },
     },
   },
-});
+}));
 
