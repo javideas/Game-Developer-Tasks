@@ -21,6 +21,8 @@ export default defineConfig(({ command }) => ({
     ],
   },
   build: {
+    // Prevent Vite from base64-inlining assets (Spine atlas files break when inlined)
+    assetsInlineLimit: 0,
     rollupOptions: {
       output: {
         // Split vendor libraries into separate chunks
