@@ -15,9 +15,7 @@ import {
 
 import flameEggSheetJson from '../../assets/sprites/flame-egg-levels/flame-egg.json';
 import flameEggSheetPng from '../../assets/sprites/flame-egg-levels/flame-egg.png';
-import phoenixAtlas from '../../assets/sprites/phoenix/phoenix.atlas?url';
-import phoenixJson from '../../assets/sprites/phoenix/phoenix.json?url';
-import phoenixPng from '../../assets/sprites/phoenix/phoenix.png';
+// Spine assets loaded from public folder (no Vite hashing - atlas references phoenix.png by name)
 import { Slider } from '../../components/Slider';
 import { killTweensRecursive, prefixSpritesheetFrames } from '../../core';
 import type { GameModeContext } from '../GameMode';
@@ -692,21 +690,13 @@ export class PhoenixFlameModeCreative extends PhoenixFlameModeLiteral {
     if (!this.content) return;
 
     // Only add assets if not already registered (prevents cache warnings on re-entry)
+    // Assets are in public/spine/ folder (no Vite hashing - atlas references phoenix.png by name)
+    const basePath = import.meta.env.BASE_URL + 'spine/';
     if (!Assets.cache.has('phoenixSkeleton')) {
-      Assets.add({ alias: 'phoenixSkeleton', src: phoenixJson });
+      Assets.add({ alias: 'phoenixSkeleton', src: basePath + 'phoenix.json' });
     }
     if (!Assets.cache.has('phoenixAtlas')) {
-      // Pass the PNG image explicitly - Vite hashes filenames in production,
-      // so the atlas can't find "phoenix.png" by its original name
-      Assets.add({
-        alias: 'phoenixAtlas',
-        src: phoenixAtlas,
-        data: {
-          images: {
-            'phoenix.png': phoenixPng,
-          },
-        },
-      });
+      Assets.add({ alias: 'phoenixAtlas', src: basePath + 'phoenix.atlas' });
     }
     await Assets.load(['phoenixSkeleton', 'phoenixAtlas']);
 
