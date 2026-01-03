@@ -87,16 +87,11 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
   private deckABtn!: Container | null;
   private deckBBtn!: Container | null;
 
-  // Debug: unique ID to track instance
-  private readonly instanceId = Math.random().toString(36).substring(7);
-
   // Store button dimensions for proper updates
-  // These are safe to initialize because they're set again in buildControlsForState
   private deckButtonWidth = 55;
   private deckButtonHeight = 28;
 
   // Reactive active deck state
-  // NOTE: Do NOT use initializer here either - it overwrites value set in buildControls
   private _activeDeck!: 'left' | 'right';
 
   /** Get current active deck */
@@ -106,32 +101,13 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
 
   /** Set active deck with immediate visual update */
   public set activeDeck(value: 'left' | 'right') {
-    console.log('[DeckToggle] setter called:', {
-      currentActiveDeck: this._activeDeck,
-      newValue: value,
-      settingsActiveDeck: this.settings?.activeDeck,
-      willSkip: this._activeDeck === value,
-    });
-
-    if (this._activeDeck === value) {
-      console.log('[DeckToggle] EARLY EXIT - values match');
-      return;
-    }
+    if (this._activeDeck === value) return;
 
     this._activeDeck = value;
     this.settings.activeDeck = value;
 
-    console.log('[DeckToggle] State updated:', {
-      _activeDeck: this._activeDeck,
-      settingsActiveDeck: this.settings.activeDeck,
-      deckABtn: this.deckABtn ? 'exists' : 'NULL',
-      deckBBtn: this.deckBBtn ? 'exists' : 'NULL',
-    });
-
-    // Update visuals immediately (no defer - more reliable)
     if (this.deckABtn && this.deckBBtn) {
       this.updateDeckToggleButtons();
-      console.log('[DeckToggle] updateDeckToggleButtons() called');
     }
   }
 
@@ -153,22 +129,12 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     this.callbacks = callbacks;
     this._activeDeck = initialSettings.activeDeck;
 
-    console.log('[DeckToggle] Panel constructed:', {
-      instanceId: this.instanceId,
-      initialActiveDeck: initialSettings.activeDeck,
-      _activeDeck: this._activeDeck,
-      settingsActiveDeck: this.settings.activeDeck,
-      deckABtn: this.deckABtn ? 'exists' : 'NULL',
-      deckBBtn: this.deckBBtn ? 'exists' : 'NULL',
-    });
-
     // Clean up temp storage
     delete temp._tempSettings;
     delete temp._tempCallbacks;
   }
 
   protected buildControls(): void {
-    console.log('[DeckToggle] buildControls() called');
     // Get settings from temp storage (during construction) or instance
     const temp = LiteralModeSettingsPanel as unknown as TempStorage;
     const settings = this.settings ?? temp._tempSettings;
@@ -177,19 +143,10 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     if (!settings || !callbacks) return;
 
     this.buildControlsForState(this.currentDeviceState, settings, callbacks);
-    console.log('[DeckToggle] buildControls() complete, buttons:', {
-      deckABtn: !!this.deckABtn,
-      deckBBtn: !!this.deckBBtn,
-    });
   }
 
   protected rebuildForDeviceState(state: DeviceState): void {
-    console.log('[DeckToggle] rebuildForDeviceState() called - buttons will be recreated');
     this.buildControlsForState(state, this.settings, this.callbacks);
-    console.log('[DeckToggle] rebuildForDeviceState() complete, buttons:', {
-      deckABtn: !!this.deckABtn,
-      deckBBtn: !!this.deckBBtn,
-    });
   }
 
   /**
@@ -344,25 +301,9 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
       this.deckButtonHeight,
       settings.activeDeck === 'left',
       () => {
-        console.log('[DeckToggle] Deck A CLICKED - using ORIGINAL pattern');
-        console.log(
-          '[DeckToggle] BEFORE callback - deckABtn:',
-          this.deckABtn ? 'exists' : 'NULL',
-          'deckBBtn:',
-          this.deckBBtn ? 'exists' : 'NULL'
-        );
-        // ORIGINAL WORKING PATTERN: direct assignment + callback + explicit update
         this.settings.activeDeck = 'left';
         this._activeDeck = 'left';
         callbacks.onResetDeck('left');
-        console.log(
-          '[DeckToggle] AFTER callback - deckABtn:',
-          this.deckABtn ? 'exists' : 'NULL',
-          'deckBBtn:',
-          this.deckBBtn ? 'exists' : 'NULL'
-        );
-        this.updateDeckToggleButtons();
-        console.log('[DeckToggle] Deck A click complete');
       }
     );
 
@@ -372,33 +313,11 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
       this.deckButtonHeight,
       settings.activeDeck === 'right',
       () => {
-        console.log('[DeckToggle] Deck B CLICKED - instanceId:', this.instanceId);
-        console.log(
-          '[DeckToggle] BEFORE callback - deckABtn:',
-          this.deckABtn ? 'exists' : 'NULL',
-          'deckBBtn:',
-          this.deckBBtn ? 'exists' : 'NULL'
-        );
-        // ORIGINAL WORKING PATTERN: direct assignment + callback + explicit update
         this.settings.activeDeck = 'right';
         this._activeDeck = 'right';
         callbacks.onResetDeck('right');
-        console.log(
-          '[DeckToggle] AFTER callback - deckABtn:',
-          this.deckABtn ? 'exists' : 'NULL',
-          'deckBBtn:',
-          this.deckBBtn ? 'exists' : 'NULL'
-        );
-        this.updateDeckToggleButtons();
-        console.log('[DeckToggle] Deck B click complete');
       }
     );
-
-    console.log('[DeckToggle] Buttons created:', {
-      instanceId: this.instanceId,
-      deckABtn: !!this.deckABtn,
-      deckBBtn: !!this.deckBBtn,
-    });
 
     // Layout based on device state
     if (isPhonePortrait) {
@@ -603,10 +522,7 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
    * Update deck toggle button visuals
    */
   private updateDeckToggleButtons(): void {
-    if (!this.deckABtn || !this.deckBBtn) {
-      console.log('[DeckToggle] updateDeckToggleButtons - buttons not ready');
-      return;
-    }
+    if (!this.deckABtn || !this.deckBBtn) return;
 
     const width = this.deckButtonWidth;
     const height = this.deckButtonHeight;
@@ -644,17 +560,15 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
 
   /**
    * Force update button colors by finding them in the content container.
-   * This is a workaround for class field initialization order issues.
+   * This is a workaround for class field initialization order issues where
+   * instance properties set during super() -> buildControls() get overwritten.
    */
   public forceUpdateDeckButtons(activeDeck: 'left' | 'right'): void {
-    console.log('[DeckToggle] forceUpdateDeckButtons called with:', activeDeck);
-
     // Update internal state
     this._activeDeck = activeDeck;
     this.settings.activeDeck = activeDeck;
 
     // Find buttons by iterating through content children
-    // Buttons are inside SettingsCell containers
     const updateButtonColor = (btn: Container, isActive: boolean) => {
       const bg = (btn as { bgGraphics?: Graphics }).bgGraphics;
       if (bg) {
@@ -676,13 +590,11 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     // Search through all children to find the deck buttons
     const findAndUpdateButtons = (container: Container) => {
       for (const child of container.children) {
-        // Check if this is a SettingsCell containing a deck button
         if (child instanceof Container) {
           for (const grandchild of child.children) {
             if (grandchild instanceof Container) {
               const bg = (grandchild as { bgGraphics?: Graphics }).bgGraphics;
               if (bg) {
-                // This is likely a deck button - check by looking for text
                 for (const greatGrandchild of grandchild.children) {
                   if (greatGrandchild instanceof Text) {
                     if (greatGrandchild.text === 'Deck A') {
@@ -700,6 +612,5 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     };
 
     findAndUpdateButtons(this.content);
-    console.log('[DeckToggle] forceUpdateDeckButtons complete');
   }
 }
