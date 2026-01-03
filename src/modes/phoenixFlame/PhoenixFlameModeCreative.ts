@@ -17,6 +17,7 @@ import flameEggSheetJson from '../../assets/sprites/flame-egg-levels/flame-egg.j
 import flameEggSheetPng from '../../assets/sprites/flame-egg-levels/flame-egg.png';
 import phoenixAtlas from '../../assets/sprites/phoenix/phoenix.atlas?url';
 import phoenixJson from '../../assets/sprites/phoenix/phoenix.json?url';
+import phoenixPng from '../../assets/sprites/phoenix/phoenix.png';
 import { Slider } from '../../components/Slider';
 import { killTweensRecursive, prefixSpritesheetFrames } from '../../core';
 import type { GameModeContext } from '../GameMode';
@@ -695,7 +696,17 @@ export class PhoenixFlameModeCreative extends PhoenixFlameModeLiteral {
       Assets.add({ alias: 'phoenixSkeleton', src: phoenixJson });
     }
     if (!Assets.cache.has('phoenixAtlas')) {
-      Assets.add({ alias: 'phoenixAtlas', src: phoenixAtlas });
+      // Pass the PNG image explicitly - Vite hashes filenames in production,
+      // so the atlas can't find "phoenix.png" by its original name
+      Assets.add({
+        alias: 'phoenixAtlas',
+        src: phoenixAtlas,
+        data: {
+          images: {
+            'phoenix.png': phoenixPng,
+          },
+        },
+      });
     }
     await Assets.load(['phoenixSkeleton', 'phoenixAtlas']);
 

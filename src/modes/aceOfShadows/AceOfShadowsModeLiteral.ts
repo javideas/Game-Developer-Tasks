@@ -1119,8 +1119,16 @@ export class AceOfShadowsModeLiteral implements GameMode {
           self.keepSettings = value;
         },
         onResetDeck: target => {
+          console.log('[DeckToggle] MODE onResetDeck callback:', {
+            target,
+            modeActiveDeckBefore: self.activeDeck,
+            settingsPanelExists: !!self.settingsPanel,
+          });
           self.activeDeck = target;
+          console.log('[DeckToggle] MODE activeDeck set to:', self.activeDeck);
+          console.log('[DeckToggle] MODE calling resetAllCardsTo...');
           self.resetAllCardsTo(target);
+          console.log('[DeckToggle] MODE resetAllCardsTo complete, settingsPanel still exists:', !!self.settingsPanel);
         },
       }
     );

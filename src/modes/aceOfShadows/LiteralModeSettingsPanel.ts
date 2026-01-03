@@ -99,13 +99,32 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
 
   /** Set active deck with immediate visual update */
   public set activeDeck(value: 'left' | 'right') {
-    if (this._activeDeck === value) return;
+    console.log('[DeckToggle] setter called:', {
+      currentActiveDeck: this._activeDeck,
+      newValue: value,
+      settingsActiveDeck: this.settings?.activeDeck,
+      willSkip: this._activeDeck === value,
+    });
+
+    if (this._activeDeck === value) {
+      console.log('[DeckToggle] EARLY EXIT - values match');
+      return;
+    }
+
     this._activeDeck = value;
     this.settings.activeDeck = value;
+
+    console.log('[DeckToggle] State updated:', {
+      _activeDeck: this._activeDeck,
+      settingsActiveDeck: this.settings.activeDeck,
+      deckABtn: this.deckABtn ? 'exists' : 'NULL',
+      deckBBtn: this.deckBBtn ? 'exists' : 'NULL',
+    });
 
     // Update visuals immediately (no defer - more reliable)
     if (this.deckABtn && this.deckBBtn) {
       this.updateDeckToggleButtons();
+      console.log('[DeckToggle] updateDeckToggleButtons() called');
     }
   }
 
@@ -127,12 +146,19 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     this.callbacks = callbacks;
     this._activeDeck = initialSettings.activeDeck;
 
+    console.log('[DeckToggle] Panel constructed:', {
+      initialActiveDeck: initialSettings.activeDeck,
+      _activeDeck: this._activeDeck,
+      settingsActiveDeck: this.settings.activeDeck,
+    });
+
     // Clean up temp storage
     delete temp._tempSettings;
     delete temp._tempCallbacks;
   }
 
   protected buildControls(): void {
+    console.log('[DeckToggle] buildControls() called');
     // Get settings from temp storage (during construction) or instance
     const temp = LiteralModeSettingsPanel as unknown as TempStorage;
     const settings = this.settings ?? temp._tempSettings;
@@ -141,10 +167,19 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
     if (!settings || !callbacks) return;
 
     this.buildControlsForState(this.currentDeviceState, settings, callbacks);
+    console.log('[DeckToggle] buildControls() complete, buttons:', {
+      deckABtn: !!this.deckABtn,
+      deckBBtn: !!this.deckBBtn,
+    });
   }
 
   protected rebuildForDeviceState(state: DeviceState): void {
+    console.log('[DeckToggle] rebuildForDeviceState() called - buttons will be recreated');
     this.buildControlsForState(state, this.settings, this.callbacks);
+    console.log('[DeckToggle] rebuildForDeviceState() complete, buttons:', {
+      deckABtn: !!this.deckABtn,
+      deckBBtn: !!this.deckBBtn,
+    });
   }
 
   /**
@@ -293,9 +328,15 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
       this.deckButtonHeight,
       settings.activeDeck === 'left',
       () => {
-        this.activeDeck = 'left'; // Use reactive setter
+        console.log('[DeckToggle] Deck A CLICKED - using ORIGINAL pattern');
+        console.log('[DeckToggle] BEFORE callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        // ORIGINAL WORKING PATTERN: direct assignment + callback + explicit update
+        this.settings.activeDeck = 'left';
+        this._activeDeck = 'left';
         callbacks.onResetDeck('left');
-        // Visual update handled by setter (deferred to next frame)
+        console.log('[DeckToggle] AFTER callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        this.updateDeckToggleButtons();
+        console.log('[DeckToggle] Deck A click complete');
       }
     );
 
@@ -305,11 +346,22 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
       this.deckButtonHeight,
       settings.activeDeck === 'right',
       () => {
-        this.activeDeck = 'right'; // Use reactive setter
+        console.log('[DeckToggle] Deck B CLICKED - using ORIGINAL pattern');
+        console.log('[DeckToggle] BEFORE callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        // ORIGINAL WORKING PATTERN: direct assignment + callback + explicit update
+        this.settings.activeDeck = 'right';
+        this._activeDeck = 'right';
         callbacks.onResetDeck('right');
-        // Visual update handled by setter (deferred to next frame)
+        console.log('[DeckToggle] AFTER callback - deckABtn:', this.deckABtn ? 'exists' : 'NULL', 'deckBBtn:', this.deckBBtn ? 'exists' : 'NULL');
+        this.updateDeckToggleButtons();
+        console.log('[DeckToggle] Deck B click complete');
       }
     );
+
+    console.log('[DeckToggle] Buttons created:', {
+      deckABtn: !!this.deckABtn,
+      deckBBtn: !!this.deckBBtn,
+    });
 
     // Layout based on device state
     if (isPhonePortrait) {
@@ -514,13 +566,26 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
    * Update deck toggle button visuals
    */
   private updateDeckToggleButtons(): void {
-    if (!this.deckABtn || !this.deckBBtn) return;
+    if (!this.deckABtn || !this.deckBBtn) {
+      console.log('[DeckToggle] updateDeckToggleButtons - buttons not ready');
+      return;
+    }
 
     const width = this.deckButtonWidth;
     const height = this.deckButtonHeight;
 
-    const updateBtn = (btn: Container, isActive: boolean) => {
+    console.log('[DeckToggle] updateDeckToggleButtons:', {
+      settingsActiveDeck: this.settings.activeDeck,
+      _activeDeck: this._activeDeck,
+      width,
+      height,
+      deckAWillBeActive: this.settings.activeDeck === 'left',
+      deckBWillBeActive: this.settings.activeDeck === 'right',
+    });
+
+    const updateBtn = (btn: Container, isActive: boolean, name: string) => {
       const deckBtn = btn as DeckButton;
+      console.log(`[DeckToggle] Updating ${name}: isActive=${isActive}`);
       deckBtn.isActive = isActive;
       deckBtn.bgGraphics.clear();
       deckBtn.bgGraphics.beginFill(isActive ? 0xf7941d : 0x444444);
@@ -529,8 +594,8 @@ export class LiteralModeSettingsPanel extends GameSettingsPanel {
       deckBtn.bgGraphics.tint = 0xffffff;
     };
 
-    updateBtn(this.deckABtn, this.settings.activeDeck === 'left');
-    updateBtn(this.deckBBtn, this.settings.activeDeck === 'right');
+    updateBtn(this.deckABtn, this.settings.activeDeck === 'left', 'DeckA');
+    updateBtn(this.deckBBtn, this.settings.activeDeck === 'right', 'DeckB');
   }
 
   /**
