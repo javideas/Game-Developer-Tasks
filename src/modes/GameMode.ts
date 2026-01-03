@@ -19,8 +19,8 @@ export interface GameModeContext {
   /** Container for mode content (child of scene's gameContainer) */
   readonly container: Container;
   
-  /** Loaded spritesheet with card/game textures */
-  readonly spritesheet: Spritesheet;
+  /** Loaded spritesheet with card/game textures (optional - some modes load their own) */
+  readonly spritesheet?: Spritesheet;
   
   /** Scene's gameContainer for coordinate conversions and scaling */
   readonly gameContainer: Container;

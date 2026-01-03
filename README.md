@@ -16,11 +16,11 @@ A unified PixiJS application featuring three interactive demos, built as a techn
 
 | # | Name | Description | Status |
 |---|------|-------------|--------|
-| 1 | **Ace of Shadows** | 144 animated cards moving between two stacks with 3D shadows | ✅ Complete |
-| 2 | **Magic Words** | Visual novel dialogue with inline emojis and API integration | ✅ Complete |
-| 3 | **Phoenix Flame** | Particle-based fire effect (max 10 sprites) | 🚧 Coming soon |
+| 1 | **Ace of Shadows** | 144 animated cards + TriPeaks solitaire creative mode | ✅ Complete |
+| 2 | **Magic Words** | Visual novel dialogue with Big Bang Theory creative mode | ✅ Complete |
+| 3 | **Phoenix Flame** | Particle fire with evolving flame-to-egg creative mode | ✅ Complete |
 
-All tasks are accessible via an in-game menu with FPS counter.
+All three tasks feature **Literal** and **Creative** modes accessible via an in-game menu with FPS counter.
 
 ---
 
@@ -64,7 +64,8 @@ src/
 │   ├── design.ts                    # Main menu UI constants
 │   ├── sharedSettings.ts            # Cross-task responsive breakpoints
 │   ├── aceOfShadowsSettings.ts      # Task 1: Ace of Shadows config
-│   └── magicWordsSettings.ts        # Task 2: Magic Words config
+│   ├── magicWordsSettings.ts        # Task 2: Magic Words config
+│   └── phoenixFlameSettings.ts      # Task 3: Phoenix Flame config
 │
 ├── core/
 │   ├── index.ts                     # Barrel exports
@@ -95,22 +96,36 @@ src/
 │   ├── GameMode.ts                  # Interface for game mode implementations
 │   ├── aceOfShadows/
 │   │   ├── index.ts                 # Barrel exports
-│   │   ├── AceOfShadowsModeLiteral.ts   # Literal mode implementation
-│   │   ├── AceOfShadowsModeCreative.ts  # Creative mode placeholder
+│   │   ├── AceOfShadowsModeLiteral.ts   # 144 cards with 3D shadows
+│   │   ├── AceOfShadowsModeCreative.ts  # TriPeaks solitaire game
 │   │   └── LiteralModeSettingsPanel.ts  # Literal mode settings UI
 │   │
-│   └── magicWords/
+│   ├── magicWords/
+│   │   ├── index.ts                 # Barrel exports
+│   │   ├── MagicWordsModeLiteral.ts     # Visual novel with API avatars
+│   │   ├── MagicWordsModeCreative.ts    # Big Bang Theory characters
+│   │   └── MagicWordsSettingsPanel.ts   # Dialogue settings UI
+│   │
+│   └── phoenixFlame/
 │       ├── index.ts                 # Barrel exports
-│       ├── MagicWordsModeLiteral.ts     # Visual novel dialogue system
-│       ├── MagicWordsModeCreative.ts    # Creative mode placeholder
-│       └── MagicWordsSettingsPanel.ts   # Dialogue settings UI
+│       ├── PhoenixFlameModeLiteral.ts   # Particle fire (max 10 sprites)
+│       ├── PhoenixFlameModeCreative.ts  # Phoenix + evolving eggs
+│       ├── PhoenixFlameSettingsPanel.ts # Flame settings UI
+│       ├── FlyingParticlePool.ts        # Object-pooled particle system
+│       ├── LandedSpriteManager.ts       # Floor landing animations
+│       └── EvolvingLandedManager.ts     # Click-to-evolve egg system
 │
 └── assets/
     ├── fonts/
     └── sprites/
         ├── thumbnails/              # Game preview images
         ├── dialog/                  # Speech bubble assets
-        └── ultimate-minimalist-card-asset/  # Card spritesheet
+        ├── ultimate-minimalist-card-asset/  # Card spritesheet
+        ├── bigbang-chars/           # Big Bang Theory character spritesheets
+        ├── bigbang-bg/              # Living room background
+        ├── flame-hq/                # HQ flame animation spritesheet
+        ├── flame-egg-levels/        # Evolving flame-to-egg spritesheet
+        └── phoenix/                 # Phoenix Spine animation
 ```
 
 ---
@@ -206,8 +221,13 @@ AceOfShadowsModeLiteral (~1000 lines)
 ├── 3D shadow system (floor + stack shadows)
 └── Settings panel (delegates to LiteralModeSettingsPanel)
 
-AceOfShadowsModeCreative (~70 lines)
-└── Placeholder for creative implementation
+AceOfShadowsModeCreative (~1600 lines)
+├── TriPeaks solitaire layout (3 pyramids)
+├── Stock pile with draw mechanics
+├── ±1 rank matching rules
+├── Card reveal with blocking logic
+├── Multiple tableau layouts (Classic, Wide, Tight)
+└── Win/lose detection with restart
 ```
 
 ### Settings Panel Hierarchy
@@ -290,8 +310,12 @@ MagicWordsSettingsPanel (~450 lines)
 ├── Physical portrait UI multiplier (1.3×)
 └── Responsive layout (vertical on portrait, horizontal on landscape)
 
-MagicWordsModeCreative (~70 lines)
-└── Placeholder for creative implementation
+MagicWordsModeCreative (~700 lines)
+├── Big Bang Theory character spritesheets
+├── Blurred living room background
+├── Same API dialogue data as Literal mode
+├── Characters grow from bottom (legs hidden)
+└── Darkened inactive speaker (tint vs opacity)
 ```
 
 ### Key Components
@@ -369,6 +393,68 @@ The settings panel also scales up by 1.3× in physical portrait mode for easier 
 
 ---
 
+## 🔥 Phoenix Flame
+
+### Particle Fire Effect (Task 3)
+
+Task 3 implements a particle-based fire effect with a strict **10 sprite maximum** constraint.
+
+```
+PhoenixFlameScene (coordinator, ~270 lines)
+├── Displays mode selection UI
+├── Creates GameModeContext for mode instances
+├── preferredOrientation: 'landscape'
+└── Forwards lifecycle events to active mode
+
+PhoenixFlameModeLiteral (~830 lines)
+├── Object-pooled FlyingParticlePool (6 max flying)
+├── LandedSpriteManager (3 max landed + shrinking)
+├── HQ animated flame spritesheet
+├── Physics-based trajectories with gravity
+├── Settings panel for real-time tuning
+└── Total: 1 main flame + 6 flying + 3 landed = 10 sprites max
+
+PhoenixFlameModeCreative (~940 lines)
+├── Extends PhoenixFlameModeLiteral (reuses particle physics)
+├── Phoenix Spine character (animated)
+├── Evolving flame-to-egg system (4 levels)
+├── Click-to-evolve mechanics (3 clicks per level)
+├── EvolvingLandedManager for egg progression
+├── Egg counter UI with animated icon
+└── Shadow system for Phoenix character
+```
+
+### Sprite Budget Compliance
+
+| Component | Count | Purpose |
+|-----------|-------|---------|
+| Main Flame | 1 | Central animated flame |
+| Flying Particles | 6 max | Emitted particles in flight |
+| Landed Sprites | 3 max | Shrinking on floor |
+| **Total** | **10 max** | ✅ Within budget |
+
+### Key Architecture Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Object pooling | No create/destroy during gameplay |
+| Validate before spawn | Never spawn then kill |
+| TrajectorySlotManager | Pre-calculated paths for spacing |
+| GSAP for death | Smooth shrink animations |
+
+### Evolving Flame System (Creative Mode)
+
+```
+┌──────────────┐    3 clicks    ┌──────────────┐    3 clicks    ┌──────────────┐    3 clicks    ┌──────────────┐
+│   Level 1    │ ────────────▶ │   Level 2    │ ────────────▶ │   Level 3    │ ────────────▶ │   Level 4    │
+│  (flame)     │                │ (evolving 1) │                │ (evolving 2) │                │   (egg)      │
+└──────────────┘                └──────────────┘                └──────────────┘                └──────────────┘
+```
+
+Eggs stay permanently until collected, with animated counter UI.
+
+---
+
 ## 📦 Key Components
 
 ### Core Classes
@@ -386,19 +472,25 @@ The settings panel also scales up by 1.3× in physical portrait mode for easier 
 | `MainMenuScene` | `scenes/MainMenuScene.ts` | Menu UI with game tiles |
 | `AceOfShadowsScene` | `scenes/AceOfShadowsScene.ts` | Task 1 coordinator |
 | `MagicWordsScene` | `scenes/MagicWordsScene.ts` | Task 2 coordinator, auto-rotates to landscape |
-| `PhoenixFlameScene` | `scenes/PhoenixFlameScene.ts` | Task 3 (coming soon) |
+| `PhoenixFlameScene` | `scenes/PhoenixFlameScene.ts` | Task 3 coordinator, particle fire |
 
 ### Mode Classes
 
 | Class | File | Responsibility |
 |-------|------|----------------|
 | `GameMode` | `modes/GameMode.ts` | Interface for mode implementations |
-| `AceOfShadowsModeLiteral` | `modes/aceOfShadows/` | Card animation game logic |
-| `AceOfShadowsModeCreative` | `modes/aceOfShadows/` | Creative mode (placeholder) |
+| `AceOfShadowsModeLiteral` | `modes/aceOfShadows/` | 144 cards with 3D shadow animation |
+| `AceOfShadowsModeCreative` | `modes/aceOfShadows/` | TriPeaks solitaire game |
 | `LiteralModeSettingsPanel` | `modes/aceOfShadows/` | Ace of Shadows settings UI |
-| `MagicWordsModeLiteral` | `modes/magicWords/` | Visual novel dialogue system |
-| `MagicWordsModeCreative` | `modes/magicWords/` | Creative mode (placeholder) |
+| `MagicWordsModeLiteral` | `modes/magicWords/` | Visual novel with API avatars |
+| `MagicWordsModeCreative` | `modes/magicWords/` | Big Bang Theory characters |
 | `MagicWordsSettingsPanel` | `modes/magicWords/` | Magic Words settings UI |
+| `PhoenixFlameModeLiteral` | `modes/phoenixFlame/` | Particle fire (max 10 sprites) |
+| `PhoenixFlameModeCreative` | `modes/phoenixFlame/` | Phoenix + evolving eggs |
+| `PhoenixFlameSettingsPanel` | `modes/phoenixFlame/` | Phoenix Flame settings UI |
+| `FlyingParticlePool` | `modes/phoenixFlame/` | Object-pooled particles |
+| `LandedSpriteManager` | `modes/phoenixFlame/` | Floor landing animations |
+| `EvolvingLandedManager` | `modes/phoenixFlame/` | Click-to-evolve egg system |
 
 ### UI Components
 
@@ -500,6 +592,18 @@ UI elements (back button, FPS counter) remain pinned to physical screen corners.
 | Presets | `A` (default), `B` (compact) with `label` |
 | Panel UI | `sliderWidth`, `paddingX`, `gap`, `topOffset` |
 | Persistence | `getPreservedSettings()`, `saveSettings()` |
+
+### Task 3 Config (`config/phoenixFlameSettings.ts`)
+
+| Category | Settings |
+|----------|----------|
+| Sprite Budget | `max: 10`, `flames: 1`, `flying: 6`, `landed: 3` |
+| Flame Animation | `animationSpeed: 0.15`, `scale: 1.10`, `anchor: (0.5, 1.0)` |
+| Particles | `maxFlyingParticles: 6`, `maxLandedSprites: 3`, `spawnRate: 3` |
+| Physics | `speed: 280`, `speedVariation: 80`, `gravity: 800` |
+| Trajectory | `angleSpread: 150°`, `lifetime: 2.5s` |
+| Landing | `landingPause: 0.3s`, `shrinkDuration: 400ms` |
+| Scaling | `initialScale: 0.05`, `peakScale: 0.2` |
 
 ---
 

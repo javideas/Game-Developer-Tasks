@@ -1,0 +1,41 @@
+{
+  "frames": {
+    "level1-0": { "frame": { "x": 3, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level1-1": { "frame": { "x": 157, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level1-2": { "frame": { "x": 311, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level1-3": { "frame": { "x": 465, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level1-4": { "frame": { "x": 619, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level1-5": { "frame": { "x": 773, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level1-6": { "frame": { "x": 927, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level1-7": { "frame": { "x": 1081, "y": 5, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+
+    "level2-0": { "frame": { "x": 3, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level2-1": { "frame": { "x": 157, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level2-2": { "frame": { "x": 311, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level2-3": { "frame": { "x": 465, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level2-4": { "frame": { "x": 619, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level2-5": { "frame": { "x": 773, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level2-6": { "frame": { "x": 927, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+    "level2-7": { "frame": { "x": 1081, "y": 227, "w": 150, "h": 215 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 170, "w": 150, "h": 215 } },
+
+    "level3-0": { "frame": { "x": 3, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } },
+    "level3-1": { "frame": { "x": 157, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } },
+    "level3-2": { "frame": { "x": 311, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } },
+    "level3-3": { "frame": { "x": 465, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } },
+    "level3-4": { "frame": { "x": 619, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } },
+    "level3-5": { "frame": { "x": 773, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } },
+    "level3-6": { "frame": { "x": 927, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } },
+    "level3-7": { "frame": { "x": 1081, "y": 452, "w": 150, "h": 210 }, "sourceSize": { "w": 192, "h": 700 }, "spriteSourceSize": { "x": 21, "y": 175, "w": 150, "h": 210 } }
+  },
+  "animations": {
+    "level1": ["level1-0", "level1-1", "level1-2", "level1-3", "level1-4", "level1-5", "level1-6", "level1-7"],
+    "level2": ["level2-0", "level2-1", "level2-2", "level2-3", "level2-4", "level2-5", "level2-6", "level2-7"],
+    "level3": ["level3-0", "level3-1", "level3-2", "level3-3", "level3-4", "level3-5", "level3-6", "level3-7"]
+  },
+  "meta": {
+    "image": "flame-egg.png",
+    "format": "RGBA8888",
+    "size": { "w": 1235, "h": 665 },
+    "scale": 1
+  }
+}

@@ -150,7 +150,7 @@ export class MainMenuScene implements Scene {
         label: tileData.label,
         thumbnailUrl: tileData.thumbnailUrl,
         onClick: () => {
-          console.log(`Selected: ${tileData.key}`);
+          if (import.meta.env.DEV) console.log(`Selected: ${tileData.key}`);
           this.options.onGameSelect?.(tileData.key);
         },
       });

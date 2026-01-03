@@ -9,8 +9,8 @@ export interface Scene {
   /** The PixiJS container that holds all scene content */
   readonly container: Container;
 
-  /** Called when the scene is added to the stage */
-  onStart?(): void;
+  /** Called when the scene is added to the stage (can be async) */
+  onStart?(): void | Promise<void>;
 
   /** Called when the scene is removed from the stage */
   onStop?(): void;
@@ -46,8 +46,9 @@ export class SceneManager {
 
   /**
    * Switch to a new scene
+   * Handles async onStart() with proper error handling
    */
-  start(scene: Scene): void {
+  async start(scene: Scene): Promise<void> {
     // Stop and remove current scene
     if (this.currentScene) {
       this.currentScene.onStop?.();
@@ -58,7 +59,16 @@ export class SceneManager {
     // Set and start new scene
     this.currentScene = scene;
     this.pixi.stage.addChild(scene.container);
-    scene.onStart?.();
+    
+    try {
+      // Await onStart if it returns a Promise
+      await scene.onStart?.();
+    } catch (error) {
+      console.error('[SceneManager] Scene startup failed:', error);
+      // Scene is still mounted - let it handle its own error state
+      // Re-throw so callers can also handle if needed
+      throw error;
+    }
     
     // Trigger resize after a frame to ensure dimensions are ready
     // This fixes initial centering issues on scene entry

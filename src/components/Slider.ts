@@ -1,4 +1,4 @@
-import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Container, Graphics, Text, TextStyle, type FederatedPointerEvent } from 'pixi.js';
 
 export interface SliderOptions {
   /** Slider label */
@@ -158,12 +158,12 @@ export class Slider extends Container {
     this.on('pointerupoutside', this.onDragEnd);
   }
 
-  private onDragStart = (event: any): void => {
+  private onDragStart = (event: FederatedPointerEvent): void => {
     this.isDragging = true;
     this.updateValueFromPosition(event.global.x, event.global.y);
   };
 
-  private onDragMove = (event: any): void => {
+  private onDragMove = (event: FederatedPointerEvent): void => {
     if (!this.isDragging) return;
     this.updateValueFromPosition(event.global.x, event.global.y);
   };

@@ -1,4 +1,4 @@
-import { Container, Spritesheet } from 'pixi.js';
+import { Container } from 'pixi.js';
 import type { Application } from '../core/Application';
 import { BaseGameScene, type DeviceState } from './BaseGameScene';
 import type { GameMode, GameModeContext } from '../modes/GameMode';
@@ -19,9 +19,13 @@ import { SCENE_LAYOUT } from '../config/sharedSettings';
  * - Forwards lifecycle events to active mode
  */
 export class MagicWordsScene extends BaseGameScene {
-  /** Current scene mode (for debugging) */
-  // @ts-expect-error: Mode is tracked for debugging but not read externally yet
-  private _mode: 'selection' | 'literal' | 'creative' = 'selection';
+  /** Current scene mode - tracked for debugging */
+  private currentMode: 'selection' | 'literal' | 'creative' = 'selection';
+  
+  /** Get current scene mode (for debugging/testing) */
+  get mode(): 'selection' | 'literal' | 'creative' {
+    return this.currentMode;
+  }
   
   /** Active game mode instance */
   private activeMode: GameMode | null = null;
@@ -76,7 +80,7 @@ export class MagicWordsScene extends BaseGameScene {
     }
     
     // Reset mode for next entry
-    this._mode = 'selection';
+    this.currentMode = 'selection';
   }
 
   destroy(): void {
@@ -89,13 +93,14 @@ export class MagicWordsScene extends BaseGameScene {
   // ============================================================
 
   private buildSelectionScreen(): void {
-    this._mode = 'selection';
+    this.currentMode = 'selection';
     this.selectionContainer = new Container();
     this.gameContainer.addChild(this.selectionContainer);
 
     // Create mode selection panel
     const panel = new ModeSelectionPanel({
-      title: 'Choose Your Experience',
+      title: 'Magic Words',
+      description: 'A system that combines text and images like custom emojis. Render a dialogue between characters with data from an API endpoint.',
       buttons: [
         {
           label: '📋 Literal Task',
@@ -135,7 +140,7 @@ export class MagicWordsScene extends BaseGameScene {
   // ============================================================
 
   private startMode(mode: 'literal' | 'creative'): void {
-    this._mode = mode;
+    this.currentMode = mode;
 
     // Remove selection screen
     if (this.selectionContainer) {
@@ -197,7 +202,7 @@ export class MagicWordsScene extends BaseGameScene {
     
     return {
       container: this.modeContainer!,
-      spritesheet: null as unknown as Spritesheet, // No spritesheet for this task
+      spritesheet: undefined, // MagicWords modes load their own assets
       gameContainer: this.gameContainer,
       
       getDeviceState: () => self.getDeviceState(),

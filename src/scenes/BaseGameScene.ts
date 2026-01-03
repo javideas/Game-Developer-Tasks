@@ -1,4 +1,4 @@
-import { Container, Sprite, Assets, Spritesheet, Texture, BlurFilter } from 'pixi.js';
+import { Container, Sprite, Assets, Spritesheet, Texture, BlurFilter, Text, TextStyle, Graphics, type ISpritesheetData } from 'pixi.js';
 import type { Scene } from '../core/SceneManager';
 import type { Application } from '../core/Application';
 import { Button } from '../components/Button';
@@ -242,7 +242,7 @@ export abstract class BaseGameScene implements Scene {
    * @returns The parsed Spritesheet
    */
   protected async loadSpritesheet(
-    jsonData: any,
+    jsonData: ISpritesheetData,
     pngPath: string,
     cacheKey: string
   ): Promise<Spritesheet> {
@@ -295,14 +295,23 @@ export abstract class BaseGameScene implements Scene {
     this.layoutBackground();
   }
 
-  onStart(): void {
+  async onStart(): Promise<void> {
     // Update browser tab title
     document.title = this.options.title;
     
     // Build in order: background → rotationWrapper (contains gameContainer) → UI
     this.buildBackground();
     this.container.addChild(this.rotationWrapper);
-    this.buildContent();
+    
+    // Await buildContent to ensure async operations complete before layout
+    try {
+      await this.buildContent();
+    } catch (error) {
+      console.error(`[${this.options.title}] Failed to build content:`, error);
+      this.showErrorState(error instanceof Error ? error.message : 'Failed to load content');
+      // Continue with layout so back button is accessible
+    }
+    
     this.buildBackButton();
     this.layoutScene();
     // Must be AFTER layoutScene() because layoutScene decides whether we're rotated.
@@ -607,9 +616,39 @@ export abstract class BaseGameScene implements Scene {
   }
 
   /**
-   * Override this method to add game-specific content to gameContainer
+   * Override this method to add game-specific content to gameContainer.
+   * Can be async for loading assets.
    */
-  protected abstract buildContent(): void;
+  protected abstract buildContent(): void | Promise<void>;
+  
+  /**
+   * Display an error state when content fails to load.
+   * Override in subclasses for custom error UI.
+   */
+  protected showErrorState(message: string): void {
+    // Semi-transparent overlay
+    const overlay = new Graphics();
+    overlay.beginFill(0x000000, 0.7);
+    overlay.drawRect(0, 0, SCENE_DESIGN.contentWidth, SCENE_DESIGN.contentHeight);
+    overlay.endFill();
+    
+    // Error text
+    const style = new TextStyle({
+      fontFamily: 'Arial',
+      fontSize: 24,
+      fill: '#ff6b6b',
+      align: 'center',
+      wordWrap: true,
+      wordWrapWidth: SCENE_DESIGN.contentWidth - 80,
+    });
+    const errorText = new Text(`⚠️ ${message}`, style);
+    errorText.anchor.set(0.5);
+    errorText.x = SCENE_DESIGN.contentWidth / 2;
+    errorText.y = SCENE_DESIGN.contentHeight / 2;
+    
+    overlay.addChild(errorText);
+    this.gameContainer.addChild(overlay);
+  }
 
   /**
    * Call this after modifying gameContainer content or design bounds to re-layout
@@ -619,9 +658,10 @@ export abstract class BaseGameScene implements Scene {
   }
 
   onStop(): void {
-    // Kill ALL GSAP tweens globally to prevent animation on destroyed objects
-    // This is a safety net for all scenes using GSAP animations
-    gsap.globalTimeline.clear();
+    // Kill GSAP tweens on this scene's containers (scoped, not global)
+    // Individual modes should handle their own GSAP cleanup via gsapCtx.revert()
+    gsap.killTweensOf(this.gameContainer);
+    gsap.killTweensOf(this.container);
     
     // Restore original document title when leaving scene
     document.title = this.originalTitle;

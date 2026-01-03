@@ -4,6 +4,7 @@ import type { GameMode, GameModeContext } from '../GameMode';
 import type { DeviceState } from '../../scenes/BaseGameScene';
 import { RichText } from '../../components/RichText';
 import { SpeechBubble } from '../../components/SpeechBubble';
+import { ErrorHandler, killTweensRecursive } from '../../core';
 import dialogBubbleImage from '../../assets/sprites/dialog/dialog-bubble.png';
 
 // Import spritesheets
@@ -56,8 +57,14 @@ const CHARACTERS: CharacterDef[] = [
  * from local spritesheets instead of API-loaded avatars.
  */
 export class MagicWordsModeCreative implements GameMode {
+  /** Static cache for character spritesheets (prevents re-parsing warnings) */
+  private static spritesheetCache: { sheet0: Spritesheet; sheet1: Spritesheet } | null = null;
+  
   private context: GameModeContext;
   private content: Container | null = null;
+  
+  /** GSAP context for scoped animation cleanup (no global clear) */
+  private gsapCtx: gsap.Context | null = null;
   
   /** Character textures by name */
   private characterTextures: Map<string, Texture> = new Map();
@@ -120,6 +127,9 @@ export class MagicWordsModeCreative implements GameMode {
   // ============================================================
   
   async start(): Promise<void> {
+    // Initialize GSAP context for scoped animation cleanup
+    this.gsapCtx = gsap.context(() => {});
+    
     this.content = new Container();
     this.context.container.addChild(this.content);
     
@@ -162,15 +172,29 @@ export class MagicWordsModeCreative implements GameMode {
    * Fetch dialogue data from the API
    */
   private async fetchDialogueData(): Promise<MagicWordsData> {
-    const response = await fetch(API_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    return await response.json();
+    return ErrorHandler.retry(
+      async () => {
+        const response = await fetch(API_URL);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+      },
+      'magic-words-creative-api-fetch',
+      3,  // 3 attempts
+      500 // 500ms initial delay
+    );
   }
   
   stop(): void {
-    gsap.globalTimeline.clear();
+    // Kill ALL GSAP animations recursively on all content and its descendants
+    if (this.content) {
+      killTweensRecursive(this.content);
+    }
+    
+    // Also revert context if it tracked anything
+    this.gsapCtx?.revert();
+    this.gsapCtx = null;
     
     if (this.content) {
       this.content.destroy({ children: true });
@@ -208,17 +232,29 @@ export class MagicWordsModeCreative implements GameMode {
   // ============================================================
   
   private async loadCharacterSpritesheets(): Promise<void> {
-    // Load both spritesheet textures
-    const baseTexture0 = await Assets.load(bigbangChars0Png);
-    const baseTexture1 = await Assets.load(bigbangChars1Png);
+    let spritesheet0: Spritesheet;
+    let spritesheet1: Spritesheet;
     
-    // Create spritesheets
-    const spritesheet0 = new Spritesheet(baseTexture0, bigbangChars0Json);
-    const spritesheet1 = new Spritesheet(baseTexture1, bigbangChars1Json);
-    
-    // Parse spritesheets
-    await spritesheet0.parse();
-    await spritesheet1.parse();
+    // Use cached spritesheets if available (prevents "already had an entry" warnings)
+    if (MagicWordsModeCreative.spritesheetCache) {
+      spritesheet0 = MagicWordsModeCreative.spritesheetCache.sheet0;
+      spritesheet1 = MagicWordsModeCreative.spritesheetCache.sheet1;
+    } else {
+      // Load both spritesheet textures
+      const baseTexture0 = await Assets.load(bigbangChars0Png);
+      const baseTexture1 = await Assets.load(bigbangChars1Png);
+      
+      // Create spritesheets
+      spritesheet0 = new Spritesheet(baseTexture0, bigbangChars0Json);
+      spritesheet1 = new Spritesheet(baseTexture1, bigbangChars1Json);
+      
+      // Parse spritesheets
+      await spritesheet0.parse();
+      await spritesheet1.parse();
+      
+      // Cache for future use
+      MagicWordsModeCreative.spritesheetCache = { sheet0: spritesheet0, sheet1: spritesheet1 };
+    }
     
     // Extract textures for each character
     // Spritesheet 0: Sheldon, Neighbour
@@ -234,7 +270,7 @@ export class MagicWordsModeCreative implements GameMode {
     if (leonardTexture) this.characterTextures.set('Leonard', leonardTexture);
     if (pennyTexture) this.characterTextures.set('Penny', pennyTexture);
     
-    console.log('Loaded character textures:', [...this.characterTextures.keys()]);
+    if (import.meta.env.DEV) console.log('Loaded character textures:', [...this.characterTextures.keys()]);
   }
   
   private buildEmojiMap(data: MagicWordsData): void {

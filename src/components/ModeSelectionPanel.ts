@@ -19,6 +19,8 @@ export interface ModeButtonConfig {
 export interface ModeSelectionPanelConfig {
   /** Panel title */
   title: string;
+  /** Optional task description (displayed below title) */
+  description?: string;
   /** Array of mode buttons */
   buttons: ModeButtonConfig[];
   /** Panel center X position */
@@ -29,7 +31,9 @@ export interface ModeSelectionPanelConfig {
   paddingX?: number;
   /** Vertical padding around content */
   paddingY?: number;
-  /** Gap between title and first button */
+  /** Gap between title and description */
+  descriptionGap?: number;
+  /** Gap between description/title and first button */
   titleGap?: number;
   /** Gap between buttons */
   buttonGap?: number;
@@ -45,10 +49,14 @@ export interface ModeSelectionPanelConfig {
   backgroundAlpha?: number;
   /** Title font size */
   titleFontSize?: number;
+  /** Description font size */
+  descriptionFontSize?: number;
   /** Button font size */
   buttonFontSize?: number;
   /** Button corner radius */
   buttonRadius?: number;
+  /** Max width for description text wrapping */
+  descriptionMaxWidth?: number;
 }
 
 /**
@@ -71,24 +79,28 @@ export class ModeSelectionPanel extends Container {
   constructor(config: ModeSelectionPanelConfig) {
     super();
 
-    // Apply defaults
+    // Apply defaults with balanced spacing
     this.config = {
       title: config.title,
+      description: config.description ?? '',
       buttons: config.buttons,
       centerX: config.centerX ?? 400,
       centerY: config.centerY ?? 220,
-      paddingX: config.paddingX ?? 40,
-      paddingY: config.paddingY ?? 30,
-      titleGap: config.titleGap ?? 55,
-      buttonGap: config.buttonGap ?? 20,
-      buttonWidth: config.buttonWidth ?? 280,
-      buttonHeight: config.buttonHeight ?? 55,
-      radius: config.radius ?? 20,
+      paddingX: config.paddingX ?? 50,
+      paddingY: config.paddingY ?? 40,
+      descriptionGap: config.descriptionGap ?? 20,
+      titleGap: config.titleGap ?? 30,
+      buttonGap: config.buttonGap ?? 18,
+      buttonWidth: config.buttonWidth ?? 320,
+      buttonHeight: config.buttonHeight ?? 56,
+      radius: config.radius ?? 24,
       backgroundColor: config.backgroundColor ?? 0x000000,
-      backgroundAlpha: config.backgroundAlpha ?? 0.5,
-      titleFontSize: config.titleFontSize ?? 32,
-      buttonFontSize: config.buttonFontSize ?? 20,
-      buttonRadius: config.buttonRadius ?? 12,
+      backgroundAlpha: config.backgroundAlpha ?? 0.6,
+      titleFontSize: config.titleFontSize ?? 36,
+      descriptionFontSize: config.descriptionFontSize ?? 17,
+      buttonFontSize: config.buttonFontSize ?? 22,
+      buttonRadius: config.buttonRadius ?? 14,
+      descriptionMaxWidth: config.descriptionMaxWidth ?? 400,
     };
 
     // Position panel at center
@@ -107,12 +119,14 @@ export class ModeSelectionPanel extends Container {
   }
 
   /**
-   * Build the panel content (title + buttons)
+   * Build the panel content (title + description + buttons)
    */
   private buildContent(): void {
     const {
       title,
+      description,
       buttons,
+      descriptionGap,
       titleGap,
       buttonGap,
       buttonWidth,
@@ -123,8 +137,10 @@ export class ModeSelectionPanel extends Container {
       backgroundColor,
       backgroundAlpha,
       titleFontSize,
+      descriptionFontSize,
       buttonFontSize,
       buttonRadius,
+      descriptionMaxWidth,
     } = this.config;
 
     // Title
@@ -146,9 +162,36 @@ export class ModeSelectionPanel extends Container {
     titleText.y = 0;
     this.contentContainer.addChild(titleText);
 
-    // Buttons
-    let currentY = titleText.height + titleGap;
+    let currentY = titleText.height;
 
+    // Description (if provided)
+    if (description) {
+      currentY += descriptionGap;
+
+      const descStyle = new TextStyle({
+        fontFamily: 'Arial, sans-serif',
+        fontSize: descriptionFontSize,
+        fill: '#e0e0e0',
+        align: 'center',
+        wordWrap: true,
+        wordWrapWidth: descriptionMaxWidth,
+        lineHeight: descriptionFontSize * 1.4,
+      });
+
+      const descText = new Text(description, descStyle);
+      descText.resolution = 2;
+      descText.anchor.set(0.5, 0);
+      descText.x = 0;
+      descText.y = currentY;
+      this.contentContainer.addChild(descText);
+
+      currentY += descText.height;
+    }
+
+    // Gap before buttons
+    currentY += titleGap;
+
+    // Buttons
     for (const btnConfig of buttons) {
       const btn = new Button({
         label: btnConfig.label,

@@ -6,6 +6,7 @@ import { RichText } from '../../components/RichText';
 import { SpeechBubble } from '../../components/SpeechBubble';
 import { MagicWordsSettingsPanel } from './MagicWordsSettingsPanel';
 import type { GameSettingsPanelConfig, SettingsPanelContext } from '../../components/GameSettingsPanel';
+import { ErrorHandler, killTweensRecursive } from '../../core';
 import dialogBubbleImage from '../../assets/sprites/dialog/dialog-bubble.png';
 import {
   API_URL,
@@ -30,6 +31,9 @@ import { SCENE_LAYOUT } from '../../config/sharedSettings';
 export class MagicWordsModeLiteral implements GameMode {
   private context: GameModeContext;
   private content: Container | null = null;
+  
+  /** GSAP context for scoped animation cleanup (no global clear) */
+  private gsapCtx: gsap.Context | null = null;
   
   /** Current dialogue data */
   private dialogueData: DialogueLine[] = [];
@@ -103,6 +107,9 @@ export class MagicWordsModeLiteral implements GameMode {
   // ============================================================
   
   async start(): Promise<void> {
+    // Initialize GSAP context for scoped animation cleanup
+    this.gsapCtx = gsap.context(() => {});
+    
     this.content = new Container();
     this.context.container.addChild(this.content);
     
@@ -145,7 +152,14 @@ export class MagicWordsModeLiteral implements GameMode {
   }
   
   stop(): void {
-    gsap.globalTimeline.clear();
+    // Kill ALL GSAP animations recursively on all content and its descendants
+    if (this.content) {
+      killTweensRecursive(this.content);
+    }
+    
+    // Also revert context if it tracked anything
+    this.gsapCtx?.revert();
+    this.gsapCtx = null;
     
     if (this.content) {
       this.content.destroy({ children: true });
@@ -186,11 +200,18 @@ export class MagicWordsModeLiteral implements GameMode {
   // ============================================================
   
   private async fetchData(): Promise<MagicWordsData> {
-    const response = await fetch(API_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    return await response.json();
+    return ErrorHandler.retry(
+      async () => {
+        const response = await fetch(API_URL);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+      },
+      'magic-words-api-fetch',
+      3,  // 3 attempts
+      500 // 500ms initial delay
+    );
   }
   
   private async loadAvatars(avatars: AvatarDef[]): Promise<void> {
@@ -237,7 +258,7 @@ export class MagicWordsModeLiteral implements GameMode {
       return this.generateRandomAvatar(name, index);
     });
     
-    console.log(`Generated avatars for: ${missingNames.join(', ')}`);
+    if (import.meta.env.DEV) console.log(`Generated avatars for: ${missingNames.join(', ')}`);
     
     return [...avatars, ...generatedAvatars];
   }

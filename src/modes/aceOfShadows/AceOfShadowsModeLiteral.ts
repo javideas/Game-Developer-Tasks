@@ -1,10 +1,11 @@
-import { Container, Sprite, Texture, Graphics, Point } from 'pixi.js';
+import { Container, Sprite, Texture, Graphics, Point, Spritesheet } from 'pixi.js';
 import { MotionBlurFilter } from '@pixi/filter-motion-blur';
 import gsap from 'gsap';
 import type { GameMode, GameModeContext } from '../GameMode';
 import type { DeviceState } from '../../scenes/BaseGameScene';
 import { LiteralModeSettingsPanel, type LiteralModeSettings } from './LiteralModeSettingsPanel';
 import type { SettingsPanelContext } from '../../components/GameSettingsPanel';
+import { killTweensRecursive } from '../../core';
 import {
   CARD_CONFIG,
   SHADOW_CONFIG,
@@ -20,6 +21,16 @@ import {
 /** Animation mode for card movement */
 type AnimationMode = 'linear' | 'spiral';
 
+/** 
+ * Extended Container type with card-specific properties.
+ * Used for card sprites that need to track face/back state.
+ */
+interface CardContainer extends Container {
+  faceTexture: Texture;
+  textureName: string;
+  isShowingFace: boolean;
+}
+
 /**
  * AceOfShadowsModeLiteral
  * 
@@ -33,9 +44,20 @@ type AnimationMode = 'linear' | 'spiral';
 export class AceOfShadowsModeLiteral implements GameMode {
   private context: GameModeContext;
   
-  // Card stacks
-  private leftStack: Container[] = [];
-  private rightStack: Container[] = [];
+  /** GSAP context for scoped animation cleanup (no global clear) */
+  private gsapCtx: gsap.Context | null = null;
+  
+  /** Flag to prevent callbacks from accessing destroyed objects */
+  private isDisposed = false;
+  
+  /** Get spritesheet (asserted to exist for this mode) */
+  private get spritesheet(): Spritesheet | undefined {
+    return this.context.spritesheet;
+  }
+  
+  // Card stacks (use CardContainer type for proper typing)
+  private leftStack: CardContainer[] = [];
+  private rightStack: CardContainer[] = [];
   private leftContainer: Container = new Container();
   private rightContainer: Container = new Container();
   
@@ -116,6 +138,12 @@ export class AceOfShadowsModeLiteral implements GameMode {
   // ============================================================
   
   start(): void {
+    // Reset disposed flag for new session
+    this.isDisposed = false;
+    
+    // Initialize GSAP context for scoped animation cleanup
+    this.gsapCtx = gsap.context(() => {});
+    
     // Create layer hierarchy for proper z-ordering
     this.shadowLayer = new Container();
     this.cardLayer = new Container();
@@ -163,6 +191,9 @@ export class AceOfShadowsModeLiteral implements GameMode {
   }
   
   stop(): void {
+    // Mark as disposed FIRST to prevent callbacks from accessing destroyed objects
+    this.isDisposed = true;
+    
     // Save settings before cleanup
     saveSettings({
       interval: this.moveInterval,
@@ -176,8 +207,17 @@ export class AceOfShadowsModeLiteral implements GameMode {
       activeDeck: this.activeDeck,
     });
     
-    // Kill ALL GSAP tweens globally
-    gsap.globalTimeline.clear();
+    // Kill all GSAP animations recursively on our containers BEFORE destroying them
+    // This prevents "transform is null" errors from animations on destroyed objects
+    killTweensRecursive(this.leftContainer);
+    killTweensRecursive(this.rightContainer);
+    if (this.movingCardLayer) {
+      killTweensRecursive(this.movingCardLayer);
+    }
+    
+    // Also revert context if it tracked anything
+    this.gsapCtx?.revert();
+    this.gsapCtx = null;
     
     // Stop animation interval
     if (this.moveIntervalId) {
@@ -258,7 +298,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
   // ============================================================
   
   private createShadowTexture(): void {
-    const sampleTexture = this.context.spritesheet?.textures['sprite-1-1.png'];
+    const sampleTexture = this.spritesheet?.textures['sprite-1-1.png'];
     if (!sampleTexture) return;
     
     const w = sampleTexture.width;
@@ -308,12 +348,8 @@ export class AceOfShadowsModeLiteral implements GameMode {
     }
   }
   
-  private createCardWithShadow(cardTexture: Texture, textureName: string): Container {
-    const cardContainer = new Container() as Container & { 
-      faceTexture: Texture; 
-      textureName: string;
-      isShowingFace: boolean;
-    };
+  private createCardWithShadow(cardTexture: Texture, textureName: string): CardContainer {
+    const cardContainer = new Container() as CardContainer;
     
     cardContainer.faceTexture = cardTexture;
     cardContainer.textureName = textureName;
@@ -370,7 +406,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
   }
   
   private createCardStacks(): void {
-    const spritesheet = this.context.spritesheet;
+    const spritesheet = this.spritesheet;
     if (!spritesheet) return;
     
     this.cardBackRedTexture = spritesheet.textures[CARD_BACKS.red] || null;
@@ -416,7 +452,8 @@ export class AceOfShadowsModeLiteral implements GameMode {
   private createShadowSprites(): void {
     if (!this.shadowTexture || !this.shadowLayer || !this.stackShadowLayer) return;
     
-    const spritesheet = this.context.spritesheet;
+    const spritesheet = this.spritesheet;
+    if (!spritesheet) return;
     
     this.floorShadow = new Sprite(this.shadowTexture);
     this.floorShadow.anchor.set(0.5, 1);
@@ -443,8 +480,8 @@ export class AceOfShadowsModeLiteral implements GameMode {
   private calculateStackShadow(
     cardGameX: number,
     cardGameY: number,
-    leftStack: Container[],
-    rightStack: Container[]
+    leftStack: CardContainer[],
+    rightStack: CardContainer[]
   ): void {
     const leftStackX = this.leftContainer.x;
     const rightStackX = this.rightContainer.x;
@@ -587,11 +624,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
       this.updateDualShadows(gamePos.x, gamePos.y);
     }
     
-    const cardData = cardContainer as Container & { 
-      faceTexture: Texture; 
-      textureName: string;
-      isShowingFace: boolean;
-    };
+    const cardData = cardContainer as CardContainer;
     const cardSprite = this.getCardSprite(cardContainer);
     
     if (this.animationMode === 'spiral' && cardSprite) {
@@ -608,6 +641,9 @@ export class AceOfShadowsModeLiteral implements GameMode {
       
       const tl = gsap.timeline({
         onUpdate: () => {
+          // Guard: Don't access destroyed objects
+          if (this.isDisposed || !cardContainer.transform) return;
+          
           const currentX = gsap.getProperty(cardContainer, 'x') as number;
           const currentY = gsap.getProperty(cardContainer, 'y') as number;
           
@@ -630,6 +666,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
               duration: arcDuration / 2,
               ease: 'power2.out',
               onComplete: () => {
+                if (this.isDisposed) return;
                 gsap.to(cardContainer, {
                   y: targetGameY,
                   duration: arcDuration / 2,
@@ -646,6 +683,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
               duration: flipDuration / 2,
               ease: 'power2.in',
               onComplete: () => {
+                if (this.isDisposed) return;
                 if (backTexture && !hasFlipped) {
                   cardSprite.texture = backTexture;
                   hasFlipped = true;
@@ -665,6 +703,8 @@ export class AceOfShadowsModeLiteral implements GameMode {
           }
         },
         onComplete: () => {
+          if (this.isDisposed) return;
+          
           gsap.killTweensOf(cardContainer);
           gsap.killTweensOf(cardContainer.scale);
           
@@ -720,6 +760,8 @@ export class AceOfShadowsModeLiteral implements GameMode {
           }
         },
         onComplete: () => {
+          if (this.isDisposed) return;
+          
           cardContainer.filters = [];
           
           this.movingCardLayer!.removeChild(cardContainer);
@@ -776,11 +818,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
     const rightStackX = this.rightContainer.x;
     const clearanceDistance = this.cardWidth * 1.5;
     
-    const cardData = cardContainer as Container & { 
-      faceTexture: Texture; 
-      textureName: string;
-      isShowingFace: boolean;
-    };
+    const cardData = cardContainer as CardContainer;
     const cardSprite = this.getCardSprite(cardContainer);
     
     if (this.animationMode === 'spiral' && cardSprite) {
@@ -794,6 +832,9 @@ export class AceOfShadowsModeLiteral implements GameMode {
       
       const tl = gsap.timeline({
         onUpdate: () => {
+          // Guard: Don't access destroyed objects
+          if (this.isDisposed || !cardContainer.transform) return;
+          
           const currentX = gsap.getProperty(cardContainer, 'x') as number;
           const currentY = gsap.getProperty(cardContainer, 'y') as number;
           
@@ -824,6 +865,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
               duration: arcDuration / 2,
               ease: 'power2.out',
               onComplete: () => {
+                if (this.isDisposed) return;
                 gsap.to(cardContainer, {
                   y: targetGameY,
                   duration: arcDuration / 2,
@@ -840,6 +882,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
               duration: flipDuration / 2,
               ease: 'power2.in',
               onComplete: () => {
+                if (this.isDisposed) return;
                 if (!hasFlipped) {
                   cardSprite.texture = cardData.faceTexture;
                   hasFlipped = true;
@@ -859,6 +902,8 @@ export class AceOfShadowsModeLiteral implements GameMode {
           }
         },
         onComplete: () => {
+          if (this.isDisposed) return;
+          
           gsap.killTweensOf(cardContainer);
           gsap.killTweensOf(cardContainer.scale);
           
@@ -926,6 +971,8 @@ export class AceOfShadowsModeLiteral implements GameMode {
           }
         },
         onComplete: () => {
+          if (this.isDisposed) return;
+          
           cardContainer.filters = [];
           
           if (promotedToTop) {
@@ -1048,7 +1095,11 @@ export class AceOfShadowsModeLiteral implements GameMode {
   }
   
   private resetAllCardsTo(target: 'left' | 'right'): void {
-    gsap.globalTimeline.clear();
+    // Kill animations on card containers (scoped, not global)
+    gsap.killTweensOf([this.leftContainer, this.rightContainer]);
+    if (this.movingCardLayer) {
+      gsap.killTweensOf(this.movingCardLayer.children);
+    }
     
     if (this.moveIntervalId) {
       clearInterval(this.moveIntervalId);
@@ -1077,7 +1128,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
     this.isAnimating = false;
     this.movingToRight = target === 'left';
     
-    const spritesheet = this.context.spritesheet;
+    const spritesheet = this.spritesheet;
     if (!spritesheet) return;
     
     this.cardBackRedTexture = spritesheet.textures[CARD_BACKS.red] || null;
@@ -1104,7 +1155,7 @@ export class AceOfShadowsModeLiteral implements GameMode {
         const backTexture = this.getCardBackTexture(textureName);
         if (cardSprite && backTexture) {
           cardSprite.texture = backTexture;
-          (cardContainer as any).isShowingFace = false;
+          (cardContainer as CardContainer).isShowingFace = false;
         }
       }
       

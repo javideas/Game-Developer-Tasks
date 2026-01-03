@@ -1,7 +1,8 @@
-import { Container, Sprite, Texture, Graphics, Text, TextStyle } from 'pixi.js';
+import { Container, Sprite, Texture, Graphics, Text, TextStyle, Spritesheet } from 'pixi.js';
 import gsap from 'gsap';
 import type { GameMode, GameModeContext } from '../GameMode';
 import type { DeviceState } from '../../scenes/BaseGameScene';
+import { killTweensRecursive } from '../../core';
 import {
   DESIGN_BOUNDS,
   TRIPEAKS_CONFIG,
@@ -55,6 +56,19 @@ interface TableauCard {
 export class AceOfShadowsModeCreative implements GameMode {
   private context: GameModeContext;
   
+  /** GSAP context for scoped animation cleanup (no global clear) */
+  private gsapCtx: gsap.Context | null = null;
+  
+  /** Flag to prevent callbacks from accessing destroyed objects */
+  private isDisposed = false;
+  
+  /** Get spritesheet (asserted to exist for this mode) */
+  private get spritesheet(): Spritesheet {
+    const ss = this.context.spritesheet;
+    if (!ss) throw new Error('AceOfShadowsModeCreative requires a spritesheet');
+    return ss;
+  }
+  
   // Layers (z-order from bottom to top)
   private tableauLayer: Container | null = null;
   private playerAreaLayer: Container | null = null;
@@ -106,6 +120,12 @@ export class AceOfShadowsModeCreative implements GameMode {
   // ============================================================
   
   start(): void {
+    // Reset disposed flag for new session
+    this.isDisposed = false;
+    
+    // Initialize GSAP context for scoped animation cleanup
+    this.gsapCtx = gsap.context(() => {});
+    
     // Create layer hierarchy
     this.tableauLayer = new Container();
     this.playerAreaLayer = new Container();
@@ -139,8 +159,24 @@ export class AceOfShadowsModeCreative implements GameMode {
   }
   
   stop(): void {
-    // Kill all GSAP animations
-    gsap.globalTimeline.clear();
+    // Mark as disposed FIRST to prevent callbacks from accessing destroyed objects
+    this.isDisposed = true;
+    
+    // Kill all GSAP animations recursively on our containers BEFORE destroying them
+    // This prevents "transform is null" errors from animations on destroyed objects
+    if (this.tableauLayer) {
+      killTweensRecursive(this.tableauLayer);
+    }
+    if (this.playerAreaLayer) {
+      killTweensRecursive(this.playerAreaLayer);
+    }
+    if (this.flyingCardLayer) {
+      killTweensRecursive(this.flyingCardLayer);
+    }
+    
+    // Also revert context if it tracked anything
+    this.gsapCtx?.revert();
+    this.gsapCtx = null;
     
     // Clean up tableau cards
     this.tableauCards = [];
@@ -201,7 +237,7 @@ export class AceOfShadowsModeCreative implements GameMode {
   // ============================================================
   
   private initTextures(): void {
-    const spritesheet = this.context.spritesheet;
+    const spritesheet = this.spritesheet;
     
     // Get card back textures
     this.cardBackRedTexture = spritesheet.textures[CARD_BACKS.red] || null;
@@ -219,7 +255,7 @@ export class AceOfShadowsModeCreative implements GameMode {
   }
   
   private createShadowTexture(): void {
-    const spritesheet = this.context.spritesheet;
+    const spritesheet = this.spritesheet;
     const sampleTexture = spritesheet.textures['sprite-1-1.png'];
     if (!sampleTexture) return;
     
@@ -323,7 +359,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     textureName: string | null,
     isFaceUp: boolean
   ): { container: Container; backTexture: Texture } {
-    const spritesheet = this.context.spritesheet;
+    const spritesheet = this.spritesheet;
     
     // Use dark back as default for unassigned cards
     const backTexture = textureName 
@@ -465,7 +501,7 @@ export class AceOfShadowsModeCreative implements GameMode {
         const [helpfulCard] = this.unassignedCards.splice(helpfulIndex, 1);
         const rank = this.getRankFromTexture(helpfulCard);
         this.revealedRanksThisBatch.add(rank);
-        console.log(`[LUCKY REVEAL] ${this.rankToString(rank)} (±1 from ${this.rankToString(targetRank)})`);
+        if (import.meta.env.DEV) console.log(`[LUCKY REVEAL] ${this.rankToString(rank)} (±1 from ${this.rankToString(targetRank)})`);
         return helpfulCard;
       }
     }
@@ -480,12 +516,12 @@ export class AceOfShadowsModeCreative implements GameMode {
       const [card] = this.unassignedCards.splice(randomIndex, 1);
       const rank = this.getRankFromTexture(card);
       this.revealedRanksThisBatch.add(rank);
-      console.log(`[REVEAL] ${this.rankToString(rank)} (random, unique)`);
+      if (import.meta.env.DEV) console.log(`[REVEAL] ${this.rankToString(rank)} (random, unique)`);
       return card;
     }
     
     // Last resort: any card (all unique ranks exhausted)
-    console.log(`[REVEAL] No unique rank available, drawing any`);
+    if (import.meta.env.DEV) console.log(`[REVEAL] No unique rank available, drawing any`);
     return this.unassignedCards.pop()!;
   }
   
@@ -527,12 +563,12 @@ export class AceOfShadowsModeCreative implements GameMode {
       const rank = this.getRankFromTexture(helpfulCard);
       // Find which tableau card(s) it enables
       const enabledRanks = tableauRanks.filter(tr => this.isValidMove(tr, rank));
-      console.log(`[SMART STOCK] Drew ${this.rankToString(rank)} (will make tableau cards playable: ${enabledRanks.map(r => this.rankToString(r)).join(', ')})`);
+      if (import.meta.env.DEV) console.log(`[SMART STOCK] Drew ${this.rankToString(rank)} (will make tableau cards playable: ${enabledRanks.map(r => this.rankToString(r)).join(', ')})`);
       return helpfulCard;
     }
     
     // No helpful card found, draw from top
-    console.log(`[STOCK] No helpful card found, drawing random`);
+    if (import.meta.env.DEV) console.log(`[STOCK] No helpful card found, drawing random`);
     return this.unassignedCards.pop()!;
   }
   
@@ -611,7 +647,7 @@ export class AceOfShadowsModeCreative implements GameMode {
           // Face-up cards get assigned with unique ranks (no duplicates)
           textureName = this.drawUniqueRankForInitial();
           rank = this.getRankFromTexture(textureName);
-          faceTexture = this.context.spritesheet.textures[textureName];
+          faceTexture = this.spritesheet.textures[textureName];
         }
         
         // Create card container (face-down cards just show back)
@@ -825,7 +861,7 @@ export class AceOfShadowsModeCreative implements GameMode {
    * Uses chain revealing: each card is ±1 from the previous, no duplicates.
    */
   private checkAndRevealCards(removedCard: TableauCard): void {
-    console.log(`[REVEAL] Checking after removing ${this.rankToString(removedCard.rank)} from row ${removedCard.row}`);
+    if (import.meta.env.DEV) console.log(`[REVEAL] Checking after removing ${this.rankToString(removedCard.rank)} from row ${removedCard.row}`);
     
     // Clear the batch tracker and start chain with the NEW waste card rank
     this.revealedRanksThisBatch.clear();
@@ -853,7 +889,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     const activeRowCleared = activeRow === -1 || 
       this.tableauCards[activeRow].every(c => c.isRemoved || !c.isFaceUp);
     
-    console.log(`  → Active row: ${activeRow}, cleared: ${activeRowCleared}`);
+    if (import.meta.env.DEV) console.log(`  → Active row: ${activeRow}, cleared: ${activeRowCleared}`);
     
     // Only reveal next row if active row is completely cleared
     if (activeRowCleared) {
@@ -872,7 +908,7 @@ export class AceOfShadowsModeCreative implements GameMode {
           const blockersRemaining = card.blockedBy.filter(b => !b.isRemoved).length;
           
           if (blockersRemaining === 0) {
-            console.log(`  → row ${card.row}, col ${card.col}: UNBLOCKED, will reveal`);
+            if (import.meta.env.DEV) console.log(`  → row ${card.row}, col ${card.col}: UNBLOCKED, will reveal`);
             cardsToReveal.push(card);
           }
         }
@@ -885,14 +921,14 @@ export class AceOfShadowsModeCreative implements GameMode {
       
       // Reveal all cards from the target row
       for (const card of cardsToReveal) {
-        console.log(`  → REVEALING card at row ${card.row}, col ${card.col}`);
+        if (import.meta.env.DEV) console.log(`  → REVEALING card at row ${card.row}, col ${card.col}`);
         this.revealCardWithChain(card, chainRank);
         chainRank = card.rank;
         revealedTotal++;
       }
     }
     
-    console.log(`[REVEAL] Revealed ${revealedTotal} card(s) total`);
+    if (import.meta.env.DEV) console.log(`[REVEAL] Revealed ${revealedTotal} card(s) total`);
     
     // Update all card visuals after state changes
     this.updateAllCardVisuals();
@@ -929,7 +965,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     const textureName = this.drawHelpfulCardForReveal(targetRank);
     card.textureName = textureName;
     card.rank = this.getRankFromTexture(textureName);
-    card.faceTexture = this.context.spritesheet.textures[textureName];
+    card.faceTexture = this.spritesheet.textures[textureName];
     card.backTexture = this.getCardBackTexture(textureName);
     
     card.isFaceUp = true;
@@ -937,7 +973,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     const cardSprite = card.container.getChildByName('cardSprite') as Sprite;
     if (!cardSprite) return;
     
-    console.log(`[REVEAL] Assigned ${this.rankToString(card.rank)} to row ${card.row}, col ${card.col} (chain from ${this.rankToString(targetRank)})`);
+    if (import.meta.env.DEV) console.log(`[REVEAL] Assigned ${this.rankToString(card.rank)} to row ${card.row}, col ${card.col} (chain from ${this.rankToString(targetRank)})`);
     
     // Flip animation
     const flipDuration = 0.25;
@@ -947,6 +983,7 @@ export class AceOfShadowsModeCreative implements GameMode {
       duration: flipDuration / 2,
       ease: 'power2.in',
       onComplete: () => {
+        if (this.isDisposed) return;
         cardSprite.texture = card.faceTexture!;
         gsap.to(card.container.scale, {
           x: TRIPEAKS_CONFIG.cardScale,
@@ -976,6 +1013,7 @@ export class AceOfShadowsModeCreative implements GameMode {
    * Log current game state for debugging
    */
   private logGameState(event: string): void {
+    if (!import.meta.env.DEV) return;
     console.log(`\n========== ${event} ==========`);
     
     // Log active/waste card
@@ -1099,6 +1137,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     // Create GSAP timeline
     const tl = gsap.timeline({
       onComplete: () => {
+        if (this.isDisposed) return;
         this.onCardLanded(card, source);
       }
     });
@@ -1136,6 +1175,7 @@ export class AceOfShadowsModeCreative implements GameMode {
         duration: flipDuration / 2,
         ease: 'power2.in',
         onComplete: () => {
+          if (this.isDisposed) return;
           // Swap texture at midpoint
           if (card.faceTexture) {
             cardSprite.texture = card.faceTexture;
@@ -1303,7 +1343,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     // Draw a card that would enable playing a tableau card
     const textureName = this.drawHelpfulCardForStock();
     const rank = this.getRankFromTexture(textureName);
-    const faceTexture = this.context.spritesheet.textures[textureName];
+    const faceTexture = this.spritesheet.textures[textureName];
     const backTexture = this.getCardBackTexture(textureName);
     
     // Create the card container
@@ -1349,7 +1389,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     if (this.unassignedCards.length > 0) {
       const textureName = this.drawFromUnassigned();
       const rank = this.getRankFromTexture(textureName);
-      const faceTexture = this.context.spritesheet.textures[textureName];
+      const faceTexture = this.spritesheet.textures[textureName];
       const backTexture = this.getCardBackTexture(textureName);
       
       // Create card container showing face
@@ -1410,7 +1450,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     if (this.gameEnded) return;
     this.gameEnded = true;
     
-    console.log('[GAME] YOU WON!');
+    if (import.meta.env.DEV) console.log('[GAME] YOU WON!');
     
     // Create overlay
     this.messageOverlay = new Container();
@@ -1471,7 +1511,7 @@ export class AceOfShadowsModeCreative implements GameMode {
    * Restart the game
    */
   private restartGame(): void {
-    console.log('[GAME] Restarting...');
+    if (import.meta.env.DEV) console.log('[GAME] Restarting...');
     this.stop();
     this.start();
   }
@@ -1576,7 +1616,7 @@ export class AceOfShadowsModeCreative implements GameMode {
     this.currentLayoutType = layoutType;
     this.currentLayout = TABLEAU_LAYOUTS[this.currentLayoutType];
 
-    console.log(`[LAYOUT] Switched to: ${this.currentLayout.name}`);
+    if (import.meta.env.DEV) console.log(`[LAYOUT] Switched to: ${this.currentLayout.name}`);
 
     // Update label
     const label = this.layoutSelector?.getChildByName('layoutLabel') as Text;

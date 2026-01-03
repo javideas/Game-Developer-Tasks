@@ -32,9 +32,13 @@ export class AceOfShadowsScene extends BaseGameScene {
   /** Loaded spritesheet (shared across modes) */
   private spritesheet: Spritesheet | null = null;
   
-  /** Current scene mode - tracked for debugging, use getter if needed */
-  // @ts-expect-error: Mode is tracked for debugging but not read externally yet
-  private _mode: SceneMode = 'selection';
+  /** Current scene mode - tracked for debugging */
+  private currentMode: SceneMode = 'selection';
+  
+  /** Get current scene mode (for debugging/testing) */
+  get mode(): SceneMode {
+    return this.currentMode;
+  }
   
   /** Active game mode instance */
   private activeMode: GameMode | null = null;
@@ -89,7 +93,7 @@ export class AceOfShadowsScene extends BaseGameScene {
     }
     
     // Reset mode for next entry
-    this._mode = 'selection';
+    this.currentMode = 'selection';
   }
 
   destroy(): void {
@@ -105,13 +109,14 @@ export class AceOfShadowsScene extends BaseGameScene {
    * Build the mode selection screen using ModeSelectionPanel component
    */
   private buildSelectionScreen(): void {
-    this._mode = 'selection';
+    this.currentMode = 'selection';
     this.selectionContainer = new Container();
     this.gameContainer.addChild(this.selectionContainer);
 
     // Create mode selection panel using config and reusable component
     const panel = new ModeSelectionPanel({
-      title: 'Choose Your Experience',
+      title: 'Ace of Shadows',
+      description: 'Create 144 sprites stacked like cards in a deck. Every 1 second, the top card moves to a different stack with a 2-second animation.',
       buttons: [
         {
           label: '📋 Literal Task',
@@ -155,7 +160,7 @@ export class AceOfShadowsScene extends BaseGameScene {
    * Start the selected mode
    */
   private startMode(mode: 'literal' | 'creative'): void {
-    this._mode = mode;
+    this.currentMode = mode;
 
     // Remove selection screen
     if (this.selectionContainer) {

@@ -21,6 +21,9 @@ export class LandedSpriteManager {
   private readonly maxPoolSize: number;
   private readonly animationSpeed: number;
   
+  /** Flag to prevent callbacks from accessing destroyed objects */
+  private isDisposed = false;
+  
   constructor(
     container: Container,
     textures: Texture[],
@@ -121,9 +124,13 @@ export class LandedSpriteManager {
         duration: shrinkDuration / 1000,
         ease: 'power2.in',
         onUpdate: () => {
+          // Guard: Don't access destroyed objects
+          if (this.isDisposed || !sprite.transform) return;
           sprite.scale.set(scaleTarget.value);
         },
         onComplete: () => {
+          // Guard: Don't access destroyed objects
+          if (this.isDisposed || !sprite.transform) return;
           sprite.visible = false;
           sprite.scale.set(1); // Reset for reuse
           sprite.anchor.set(0.5, 1.0); // Reset anchor for reuse
@@ -164,9 +171,12 @@ export class LandedSpriteManager {
   public reset(): void {
     // Kill all GSAP tweens on pool sprites
     for (const sprite of this.pool) {
+      gsap.killTweensOf(sprite);
       gsap.killTweensOf(sprite.scale);
-      sprite.visible = false;
-      sprite.scale.set(1);
+      if (sprite.transform) {
+        sprite.visible = false;
+        sprite.scale.set(1);
+      }
     }
     this.activeCount = 0;
   }
@@ -175,8 +185,12 @@ export class LandedSpriteManager {
    * Clean up all resources
    */
   public destroy(): void {
+    // Mark disposed FIRST to prevent callbacks from accessing destroyed objects
+    this.isDisposed = true;
+    
     this.reset();
     for (const sprite of this.pool) {
+      gsap.killTweensOf(sprite);
       sprite.stop();
       sprite.destroy();
     }

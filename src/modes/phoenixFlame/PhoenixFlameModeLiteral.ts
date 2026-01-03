@@ -1,5 +1,6 @@
 import { AnimatedSprite, Assets, Container, Graphics, Spritesheet, Text, TextStyle, Texture, Ticker } from 'pixi.js';
 import type { GameMode, GameModeContext } from '../GameMode';
+import { killTweensRecursive } from '../../core';
 import { FLAME_CONFIG, DESIGN_BOUNDS, SPRITE_BUDGET, PARTICLE_CONFIG } from '../../config/phoenixFlameSettings';
 import { PhoenixFlameSettingsPanel } from './PhoenixFlameSettingsPanel';
 import type { GameSettingsPanelConfig, SettingsPanelContext } from '../../components/GameSettingsPanel';
@@ -28,52 +29,120 @@ import flameSheetPng from '../../assets/sprites/flame-hq/flames-hq.png';
  * Key principle: Validate BEFORE create. Never spawn then kill.
  */
 export class PhoenixFlameModeLiteral implements GameMode {
-  private readonly context: GameModeContext;
-  private content: Container | null = null;
-  private flameSprite: AnimatedSprite | null = null;
-  private spritesheet: Spritesheet | null = null;
-  private settingsPanel: PhoenixFlameSettingsPanel | null = null;
+  /** Static cache for flame spritesheet (prevents re-parsing warnings) */
+  private static spritesheetCache: Spritesheet | null = null;
+  
+  protected readonly context: GameModeContext;
+  protected content: Container | null = null;
+  protected flameSprite: AnimatedSprite | null = null;
+  protected spritesheet: Spritesheet | null = null;
+  protected settingsPanel: PhoenixFlameSettingsPanel | null = null;
   
   // Particle system (senior approach: object pooling)
-  private flyingPool: FlyingParticlePool | null = null;
-  private particleContainer: Container | null = null;
-  private landedContainer: Container | null = null;
-  private landedManager: LandedSpriteManager | null = null;
-  private flameTextures: Texture[] = [];
+  protected flyingPool: FlyingParticlePool | null = null;
+  protected particleContainer: Container | null = null;
+  protected landedContainer: Container | null = null;
+  protected landedManager: LandedSpriteManager | null = null;
+  protected flameTextures: Texture[] = [];
   
   // Spawn control
-  private spawnTimer: number = 0;
-  private spawnInterval: number = 1000 / PARTICLE_CONFIG.spawnRate; // ms between spawns
+  protected spawnTimer: number = 0;
+  protected spawnInterval: number = 1000 / PARTICLE_CONFIG.spawnRate; // ms between spawns
   
   // Threshold tracking for variety
-  private angleThreshold: number = PARTICLE_CONFIG.angleThreshold;
-  private speedThreshold: number = PARTICLE_CONFIG.speedThreshold;
-  private lastSpawnAngle: number = -90;
-  private lastSpawnSpeed: number = PARTICLE_CONFIG.speed;
+  protected angleThreshold: number = PARTICLE_CONFIG.angleThreshold;
+  protected speedThreshold: number = PARTICLE_CONFIG.speedThreshold;
+  protected lastSpawnAngle: number = -90;
+  protected lastSpawnSpeed: number = PARTICLE_CONFIG.speed;
   
   // Settings (controlled by sliders)
-  private currentScale: number = FLAME_CONFIG.scale;
-  private particlePeakScale: number = PARTICLE_CONFIG.peakScale;
-  private heightMultiplier: number = PARTICLE_CONFIG.heightMultiplier;
-  private angleSpread: number = PARTICLE_CONFIG.angleSpread;
-  private floorOffset: number = PARTICLE_CONFIG.floorExtraOffset;
-  private flameYOffset: number = PARTICLE_CONFIG.flameYOffset;
-  private landingPause: number = PARTICLE_CONFIG.landingPause;
-  private shrinkOffset: number = PARTICLE_CONFIG.shrinkOffset;
-  private gravity: number = PARTICLE_CONFIG.gravity;
-  private bigFlamePivotOffset: number = PARTICLE_CONFIG.bigFlamePivotOffset;
-  private spawnHeightRange: number = PARTICLE_CONFIG.spawnHeightRange;
+  protected currentScale: number = FLAME_CONFIG.scale;
+  protected particlePeakScale: number = PARTICLE_CONFIG.peakScale;
+  protected heightMultiplier: number = PARTICLE_CONFIG.heightMultiplier;
+  protected angleSpread: number = PARTICLE_CONFIG.angleSpread;
+  protected floorOffset: number = PARTICLE_CONFIG.floorExtraOffset;
+  protected flameYOffset: number = PARTICLE_CONFIG.flameYOffset;
+  protected landingPause: number = PARTICLE_CONFIG.landingPause;
+  protected shrinkOffset: number = PARTICLE_CONFIG.shrinkOffset;
+  protected gravity: number = PARTICLE_CONFIG.gravity;
+  protected bigFlamePivotOffset: number = PARTICLE_CONFIG.bigFlamePivotOffset;
+  protected spawnHeightRange: number = PARTICLE_CONFIG.spawnHeightRange;
   
   // Debug: pivot marker
-  private pivotMarker: Graphics | null = null;
-  private showPivotMarker: boolean = false;
+  protected pivotMarker: Graphics | null = null;
+  protected showPivotMarker: boolean = false;
   
   // Design dimensions for layout
-  private readonly designWidth = DESIGN_BOUNDS.width;
-  private readonly designHeight = DESIGN_BOUNDS.height;
+  protected readonly designWidth = DESIGN_BOUNDS.width;
+  protected readonly designHeight = DESIGN_BOUNDS.height;
 
   constructor(context: GameModeContext) {
     this.context = context;
+  }
+
+  // ============================================================
+  // Public methods for subclass access
+  // ============================================================
+
+  public async loadSpritesheetPublic(): Promise<void> {
+    await this.loadSpritesheet();
+  }
+
+  public createParticleContainersPublic(): void {
+    if (!this.content) return;
+    this.particleContainer = new Container();
+    this.landedContainer = new Container();
+    this.content.addChild(this.particleContainer);
+    this.content.addChild(this.landedContainer);
+  }
+
+  public createParticleSystemPublic(): void {
+    this.createLandedManager();
+    this.createFlyingPool();
+  }
+
+  public startGameLoopPublic(): void {
+    this.startGameLoop();
+  }
+
+  // ============================================================
+  // Override hooks for subclasses
+  // ============================================================
+
+  /** Override to provide custom spawn position */
+  protected getSpawnPosition(): { x: number; y: number } {
+    if (!this.flameSprite) {
+      return { x: this.designWidth / 2, y: this.designHeight / 2 };
+    }
+    
+    const x = this.flameSprite.x;
+    const pivotY = this.flameSprite.y;
+    const randomOffset = Math.random() * this.spawnHeightRange;
+    const y = pivotY - randomOffset;
+    
+    return { x, y };
+  }
+
+  /** Override to provide custom floor Y position */
+  protected getFlameBaseY(): number {
+    if (!this.flameSprite) return this.designHeight * 0.75;
+    
+    const textureHeight = FLAME_CONFIG.frameHeight;
+    const scaledHeight = textureHeight * this.currentScale;
+    const anchorY = this.flameSprite.anchor.y;
+    
+    // Base is below anchor by (1 - anchorY) * scaledHeight
+    return this.flameSprite.y + (1 - anchorY) * scaledHeight;
+  }
+
+  /** Override to react when particle is spawned */
+  protected onParticleSpawned(): void {
+    // Default: no action (can be overridden by subclasses)
+  }
+
+  /** Override to check if main character exists */
+  protected hasMainCharacter(): boolean {
+    return this.flameSprite !== null;
   }
 
   // ============================================================
@@ -132,6 +201,11 @@ export class PhoenixFlameModeLiteral implements GameMode {
     // Stop game loop
     this.stopGameLoop();
     
+    // Kill all GSAP animations recursively BEFORE destroying
+    if (this.content) {
+      killTweensRecursive(this.content);
+    }
+    
     // Destroy flying pool
     if (this.flyingPool) {
       this.flyingPool.destroy();
@@ -174,11 +248,9 @@ export class PhoenixFlameModeLiteral implements GameMode {
       this.content = null;
     }
 
-    // Unload spritesheet
-    if (this.spritesheet) {
-      this.spritesheet.destroy(true);
-      this.spritesheet = null;
-    }
+    // Don't destroy cached spritesheet - just clear reference
+    // The static cache keeps it alive for scene re-entry
+    this.spritesheet = null;
     
     this.flameTextures = [];
   }
@@ -221,9 +293,15 @@ export class PhoenixFlameModeLiteral implements GameMode {
   // ============================================================
 
   private async loadSpritesheet(): Promise<void> {
-    const texture = await Assets.load(flameSheetPng);
-    this.spritesheet = new Spritesheet(texture, flameSheetJson);
-    await this.spritesheet.parse();
+    // Use cached spritesheet if available (prevents "already had an entry" warnings)
+    if (PhoenixFlameModeLiteral.spritesheetCache) {
+      this.spritesheet = PhoenixFlameModeLiteral.spritesheetCache;
+    } else {
+      const texture = await Assets.load(flameSheetPng);
+      this.spritesheet = new Spritesheet(texture, flameSheetJson);
+      await this.spritesheet.parse();
+      PhoenixFlameModeLiteral.spritesheetCache = this.spritesheet;
+    }
     
     // Cache flame textures for pools
     const frames = this.spritesheet.animations['flame'];
@@ -263,7 +341,7 @@ export class PhoenixFlameModeLiteral implements GameMode {
     // Create pivot marker (for debugging)
     this.createPivotMarker();
     
-    console.log('[PhoenixFlame] Main flame created (1 sprite)');
+    if (import.meta.env.DEV) console.log('[PhoenixFlame] Main flame created (1 sprite)');
   }
 
   /**
@@ -328,7 +406,7 @@ export class PhoenixFlameModeLiteral implements GameMode {
       PARTICLE_CONFIG.animationSpeed
     );
     
-    console.log(`[PhoenixFlame] FlyingPool created (max ${PARTICLE_CONFIG.maxFlyingParticles} flying sprites)`);
+    if (import.meta.env.DEV) console.log(`[PhoenixFlame] FlyingPool created (max ${PARTICLE_CONFIG.maxFlyingParticles} flying sprites)`);
   }
 
   private createLandedManager(): void {
@@ -341,7 +419,7 @@ export class PhoenixFlameModeLiteral implements GameMode {
       PARTICLE_CONFIG.animationSpeed
     );
     
-    console.log(`[PhoenixFlame] LandedManager created (max ${PARTICLE_CONFIG.maxLandedSprites} landed sprites)`);
+    if (import.meta.env.DEV) console.log(`[PhoenixFlame] LandedManager created (max ${PARTICLE_CONFIG.maxLandedSprites} landed sprites)`);
   }
 
   // ============================================================
@@ -442,7 +520,7 @@ export class PhoenixFlameModeLiteral implements GameMode {
    * Senior approach: Check budget BEFORE creating particle.
    */
   private trySpawnParticle(): boolean {
-    if (!this.flyingPool || !this.flameSprite) return false;
+    if (!this.flyingPool || !this.hasMainCharacter()) return false;
     
     // 1. Check sprite budget
     const flyingCount = this.flyingPool.getActiveCount();
@@ -457,12 +535,12 @@ export class PhoenixFlameModeLiteral implements GameMode {
     const halfSpread = this.angleSpread / 2;
     const minAngle = -90 - halfSpread;
     const maxAngle = -90 + halfSpread;
-    let angle = this.generateAngleWithThreshold(minAngle, maxAngle);
+    const angle = this.generateAngleWithThreshold(minAngle, maxAngle);
     
     // 3. Generate speed (with optional threshold for variety)
     const baseSpeed = PARTICLE_CONFIG.speed * this.heightMultiplier;
     const speedVariation = PARTICLE_CONFIG.speedVariation;
-    let speed = this.generateSpeedWithThreshold(baseSpeed, speedVariation);
+    const speed = this.generateSpeedWithThreshold(baseSpeed, speedVariation);
     
     // 4. Store for next spawn's threshold check
     this.lastSpawnAngle = angle;
@@ -485,6 +563,9 @@ export class PhoenixFlameModeLiteral implements GameMode {
     particle.slotId = -1;
     particle.maxAge = PARTICLE_CONFIG.lifetime;
     particle.sprite.scale.set(PARTICLE_CONFIG.initialScale * this.currentScale);
+    
+    // 7. Notify subclass of spawn (e.g., for animations)
+    this.onParticleSpawned();
     
     return true;
   }
@@ -556,30 +637,11 @@ export class PhoenixFlameModeLiteral implements GameMode {
   }
 
   /**
-   * Get the spawn position for a new particle.
-   * Spawns from a vertical line at the flame's horizontal center,
-   * at a random height within the spawn range (above the pivot).
-   */
-  private getSpawnPosition(): { x: number; y: number } {
-    if (!this.flameSprite) {
-      return { x: this.designWidth / 2, y: this.designHeight / 2 };
-    }
-    
-    const x = this.flameSprite.x;
-    const pivotY = this.flameSprite.y;
-    
-    // Random Y position above the pivot, within spawn range
-    const randomOffset = Math.random() * this.spawnHeightRange;
-    const y = pivotY - randomOffset;
-    
-    return { x, y };
-  }
-
-  /**
    * Callback when a particle lands on the floor.
    * Transfers from flying pool to landed manager.
+   * Override in subclasses for custom landing behavior.
    */
-  private onParticleLand(particle: FlyingParticle, floorY: number): void {
+  protected onParticleLand(particle: FlyingParticle, floorY: number): void {
     if (!this.landedManager || !this.flyingPool) return;
     
     const x = particle.sprite.x;
@@ -814,14 +876,4 @@ export class PhoenixFlameModeLiteral implements GameMode {
   /**
    * Get the Y position of the flame's base (bottom) in screen coordinates
    */
-  private getFlameBaseY(): number {
-    if (!this.flameSprite) return this.designHeight * 0.75;
-    
-    const textureHeight = FLAME_CONFIG.frameHeight;
-    const scaledHeight = textureHeight * this.currentScale;
-    const anchorY = this.flameSprite.anchor.y;
-    
-    // Base is below anchor by (1 - anchorY) * scaledHeight
-    return this.flameSprite.y + (1 - anchorY) * scaledHeight;
-  }
 }
