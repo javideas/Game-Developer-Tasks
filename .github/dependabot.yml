@@ -1,0 +1,38 @@
+# Dependabot Configuration
+# Keeps dependencies updated automatically
+
+version: 2
+updates:
+  # NPM dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      # Group development dependencies together
+      development-dependencies:
+        patterns:
+          - "eslint*"
+          - "prettier*"
+          - "vitest*"
+          - "typescript*"
+          - "@types/*"
+      # Group production dependencies together
+      production-dependencies:
+        patterns:
+          - "pixi*"
+          - "@pixi/*"
+          - "gsap*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+
