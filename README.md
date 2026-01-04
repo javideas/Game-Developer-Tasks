@@ -8,7 +8,7 @@ A unified PixiJS application featuring three interactive demos, built as a techn
 
 ## 🎮 Live Demo
 
-👉 **[Play the Demo](https://javideas.github.io/Game-Developer-Tasks/)** *(coming soon)*
+👉 **[Play the Demo](https://javideas.github.io/Game-Developer-Tasks/)**
 
 ---
 
@@ -56,76 +56,92 @@ Open `http://localhost:5173` in your browser.
 ## 📁 File Architecture
 
 ```
-src/
-├── main.ts                          # Entry point, scene navigation
-├── style.css                        # Global styles (fullscreen canvas, FPS)
+.
+├── public/
+│   ├── favicon.svg
+│   └── spine/                       # Spine assets (unprocessed by Vite)
+│       ├── phoenix.atlas
+│       ├── phoenix.json
+│       └── phoenix.png
 │
-├── config/
-│   ├── design.ts                    # Main menu UI constants
-│   ├── sharedSettings.ts            # Cross-task responsive breakpoints
-│   ├── aceOfShadowsSettings.ts      # Task 1: Ace of Shadows config
-│   ├── magicWordsSettings.ts        # Task 2: Magic Words config
-│   └── phoenixFlameSettings.ts      # Task 3: Phoenix Flame config
-│
-├── core/
-│   ├── index.ts                     # Barrel exports
-│   ├── Application.ts               # PixiJS wrapper, resize handling
-│   ├── SceneManager.ts              # Scene lifecycle (start, stop, update)
-│   └── FPSCounter.ts                # FPS display (HTML overlay, top-right)
-│
-├── components/
-│   ├── Button.ts                    # Reusable button with hover effects
-│   ├── MenuTile.ts                  # Game thumbnail tile with hover overlay
-│   ├── Slider.ts                    # Value slider control
-│   ├── Toggle.ts                    # Boolean toggle control
-│   ├── Dropdown.ts                  # Dropdown menu control
-│   ├── SettingsPanel.ts             # Cell-based settings layout
-│   ├── GameSettingsPanel.ts         # Abstract base for game settings UI
-│   ├── ModeSelectionPanel.ts        # Mode selection UI component
-│   ├── RichText.ts                  # Text with inline emoji images
-│   └── SpeechBubble.ts              # 9-slice speech bubble component
-│
-├── scenes/
-│   ├── BaseGameScene.ts             # Abstract base class for game scenes
-│   ├── MainMenuScene.ts             # Main menu with game tiles
-│   ├── AceOfShadowsScene.ts         # Task 1: Scene coordinator
-│   ├── MagicWordsScene.ts           # Task 2: Scene coordinator
-│   └── PhoenixFlameScene.ts         # Task 3: Particle fire effect
-│
-├── modes/
-│   ├── GameMode.ts                  # Interface for game mode implementations
-│   ├── aceOfShadows/
-│   │   ├── index.ts                 # Barrel exports
-│   │   ├── AceOfShadowsModeLiteral.ts   # 144 cards with 3D shadows
-│   │   ├── AceOfShadowsModeCreative.ts  # TriPeaks solitaire game
-│   │   └── LiteralModeSettingsPanel.ts  # Literal mode settings UI
-│   │
-│   ├── magicWords/
-│   │   ├── index.ts                 # Barrel exports
-│   │   ├── MagicWordsModeLiteral.ts     # Visual novel with API avatars
-│   │   ├── MagicWordsModeCreative.ts    # Big Bang Theory characters
-│   │   └── MagicWordsSettingsPanel.ts   # Dialogue settings UI
-│   │
-│   └── phoenixFlame/
-│       ├── index.ts                 # Barrel exports
-│       ├── PhoenixFlameModeLiteral.ts   # Particle fire (max 10 sprites)
-│       ├── PhoenixFlameModeCreative.ts  # Phoenix + evolving eggs
-│       ├── PhoenixFlameSettingsPanel.ts # Flame settings UI
-│       ├── FlyingParticlePool.ts        # Object-pooled particle system
-│       ├── LandedSpriteManager.ts       # Floor landing animations
-│       └── EvolvingLandedManager.ts     # Click-to-evolve egg system
-│
-└── assets/
-    ├── fonts/
-    └── sprites/
-        ├── thumbnails/              # Game preview images
-        ├── dialog/                  # Speech bubble assets
-        ├── ultimate-minimalist-card-asset/  # Card spritesheet
-        ├── bigbang-chars/           # Big Bang Theory character spritesheets
-        ├── bigbang-bg/              # Living room background
-        ├── flame-hq/                # HQ flame animation spritesheet
-        ├── flame-egg-levels/        # Evolving flame-to-egg spritesheet
-        └── phoenix/                 # Phoenix Spine animation
+└── src/
+    ├── main.ts                          # Entry point, scene navigation
+    ├── style.css                        # Global styles (fullscreen canvas, FPS)
+    │
+    ├── __tests__/                       # Test suite
+    │   ├── setup.ts                     # WebGL/browser mocks for PixiJS
+    │   ├── helpers/testUtils.ts         # Mock factories and utilities
+    │   └── unit/                        # Unit tests
+    │       ├── components/Button.test.ts
+    │       └── config/*.test.ts
+    │
+    ├── config/
+    │   ├── design.ts                    # Main menu UI constants
+    │   ├── sharedSettings.ts            # Cross-task responsive breakpoints
+    │   ├── aceOfShadowsSettings.ts      # Task 1: Ace of Shadows config
+    │   ├── magicWordsSettings.ts        # Task 2: Magic Words config
+    │   └── phoenixFlameSettings.ts      # Task 3: Phoenix Flame config
+    │
+    ├── core/
+    │   ├── index.ts                     # Barrel exports
+    │   ├── Application.ts               # PixiJS wrapper, resize handling
+    │   ├── SceneManager.ts              # Scene lifecycle (start, stop, update)
+    │   └── FPSCounter.ts                # FPS display (HTML overlay, top-right)
+    │
+    ├── components/
+    │   ├── Button.ts                    # Reusable button with hover effects
+    │   ├── MenuTile.ts                  # Game thumbnail tile with hover overlay
+    │   ├── Slider.ts                    # Value slider control
+    │   ├── Toggle.ts                    # Boolean toggle control
+    │   ├── Dropdown.ts                  # Dropdown menu control
+    │   ├── SettingsPanel.ts             # Cell-based settings layout
+    │   ├── GameSettingsPanel.ts         # Abstract base for game settings UI
+    │   ├── ModeSelectionPanel.ts        # Mode selection UI component
+    │   ├── RichText.ts                  # Text with inline emoji images
+    │   └── SpeechBubble.ts              # 9-slice speech bubble component
+    │
+    ├── scenes/
+    │   ├── BaseGameScene.ts             # Abstract base class for game scenes
+    │   ├── MainMenuScene.ts             # Main menu with game tiles
+    │   ├── AceOfShadowsScene.ts         # Task 1: Scene coordinator
+    │   ├── MagicWordsScene.ts           # Task 2: Scene coordinator
+    │   └── PhoenixFlameScene.ts         # Task 3: Particle fire effect
+    │
+    ├── modes/
+    │   ├── GameMode.ts                  # Interface for game mode implementations
+    │   ├── aceOfShadows/
+    │   │   ├── index.ts                 # Barrel exports
+    │   │   ├── AceOfShadowsModeLiteral.ts   # 144 cards with 3D shadows
+    │   │   ├── AceOfShadowsModeCreative.ts  # TriPeaks solitaire game
+    │   │   ├── CardContainer.ts             # Type-safe card with face/back state
+    │   │   └── LiteralModeSettingsPanel.ts  # Literal mode settings UI
+    │   │
+    │   ├── magicWords/
+    │   │   ├── index.ts                 # Barrel exports
+    │   │   ├── MagicWordsModeLiteral.ts     # Visual novel with API avatars
+    │   │   ├── MagicWordsModeCreative.ts    # Big Bang Theory characters
+    │   │   └── MagicWordsSettingsPanel.ts   # Dialogue settings UI
+    │   │
+    │   └── phoenixFlame/
+    │       ├── index.ts                 # Barrel exports
+    │       ├── PhoenixFlameModeLiteral.ts   # Particle fire (max 10 sprites)
+    │       ├── PhoenixFlameModeCreative.ts  # Phoenix + evolving eggs
+    │       ├── PhoenixFlameSettingsPanel.ts # Flame settings UI
+    │       ├── FlyingParticlePool.ts        # Object-pooled particle system
+    │       ├── LandedSpriteManager.ts       # Floor landing animations
+    │       └── EvolvingLandedManager.ts     # Click-to-evolve egg system
+    │
+    └── assets/
+        ├── fonts/
+        └── sprites/
+            ├── thumbnails/              # Game preview images
+            ├── dialog/                  # Speech bubble assets
+            ├── ultimate-minimalist-card-asset/  # Card spritesheet
+            ├── bigbang-chars/           # Big Bang Theory character spritesheets
+            ├── bigbang-bg/              # Living room background
+            ├── flame-hq/                # HQ flame animation spritesheet
+            ├── flame-egg-levels/        # Evolving flame-to-egg spritesheet
+            └── phoenix-flame/           # Phoenix flame background
 ```
 
 ---
@@ -446,7 +462,7 @@ PhoenixFlameModeCreative (~940 lines)
 
 ```
 ┌──────────────┐    3 clicks    ┌──────────────┐    3 clicks    ┌──────────────┐    3 clicks    ┌──────────────┐
-│   Level 1    │ ────────────▶ │   Level 2    │ ────────────▶ │   Level 3    │ ────────────▶ │   Level 4    │
+│   Level 1    │ ────────────▶  │   Level 2    │ ─────────────▶ │   Level 3    │ ─────────────▶ │   Level 4    │
 │  (flame)     │                │ (evolving 1) │                │ (evolving 2) │                │   (egg)      │
 └──────────────┘                └──────────────┘                └──────────────┘                └──────────────┘
 ```
@@ -481,6 +497,7 @@ Eggs stay permanently until collected, with animated counter UI.
 | `GameMode` | `modes/GameMode.ts` | Interface for mode implementations |
 | `AceOfShadowsModeLiteral` | `modes/aceOfShadows/` | 144 cards with 3D shadow animation |
 | `AceOfShadowsModeCreative` | `modes/aceOfShadows/` | TriPeaks solitaire game |
+| `CardContainer` | `modes/aceOfShadows/` | Type-safe card with face/back state tracking |
 | `LiteralModeSettingsPanel` | `modes/aceOfShadows/` | Ace of Shadows settings UI |
 | `MagicWordsModeLiteral` | `modes/magicWords/` | Visual novel with API avatars |
 | `MagicWordsModeCreative` | `modes/magicWords/` | Big Bang Theory characters |
@@ -609,6 +626,12 @@ UI elements (back button, FPS counter) remain pinned to physical screen corners.
 
 ## 🛠️ How It Was Made
 
+### Made with AIs
+
+Any asset not mentioned have been created with OPENAI's ChatGPT image generation feature, then their background removed with the next tools or with [Photopea](https://photopea.com) using the magic wand (that's why there are some white pixels, I didn't invest time in polishing the manual removal).
+
+Code completion, brainstorming and schemas has been made with the help of Cursor, and "sadly" we are far away to be just as simply as "make me a game super cool".
+
 ### Card Assets
 Cards from [Ultimate Minimalist Card Asset Set](https://oxxonpic.itch.io/ultimate-minimalist-card-asset-set)
 
@@ -641,14 +664,10 @@ eslint.config.js          # ESLint v9 flat config with TypeScript
 vitest.config.ts          # Test configuration with coverage
 src/__tests__/
 ├── setup.ts              # WebGL/browser mocks for PixiJS
-├── helpers/
-│   └── testUtils.ts      # Mock factories and utilities
+├── helpers/testUtils.ts  # Mock factories and utilities
 └── unit/
-    ├── components/
-    │   └── Button.test.ts
-    └── config/
-        ├── sharedSettings.test.ts
-        └── aceOfShadowsSettings.test.ts
+    ├── components/Button.test.ts
+    └── config/*.test.ts  # sharedSettings, aceOfShadowsSettings
 
 # CI/CD (GitHub Actions)
 .github/
