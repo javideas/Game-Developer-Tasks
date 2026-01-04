@@ -59,6 +59,7 @@ export class PhoenixFlameModeCreative extends PhoenixFlameModeLiteral {
   private eggCounterPanel: Container | null = null;
   private eggCounterText: Text | null = null;
   private eggCounterIcon: AnimatedSprite | null = null;
+  private instructionText: Text | null = null;
 
   // Creative settings panel (only shown in development)
   private static readonly DEBUG_PANEL = import.meta.env.DEV;
@@ -222,6 +223,24 @@ export class PhoenixFlameModeCreative extends PhoenixFlameModeLiteral {
     this.eggCounterText.x = 58;
     this.eggCounterText.y = panelHeight / 2;
     this.eggCounterPanel.addChild(this.eggCounterText);
+
+    // Instruction text below counter
+    this.instructionText = new Text(
+      '🔥 Click landed flames to evolve them into golden eggs!',
+      new TextStyle({
+        fontFamily: 'Georgia, serif',
+        fontSize: 16,
+        fill: '#FFE4B5', // Warm moccasin
+        fontWeight: 'normal',
+        dropShadow: true,
+        dropShadowColor: '#000000',
+        dropShadowBlur: 4,
+        dropShadowDistance: 1,
+      })
+    );
+    this.instructionText.x = 0;
+    this.instructionText.y = panelHeight + 10;
+    this.eggCounterPanel.addChild(this.instructionText);
 
     if (import.meta.env.DEV) console.log('[PhoenixCreative] Egg counter panel created');
   }
@@ -920,6 +939,7 @@ export class PhoenixFlameModeCreative extends PhoenixFlameModeLiteral {
       this.eggCounterPanel = null;
       this.eggCounterText = null;
       this.eggCounterIcon = null;
+      this.instructionText = null;
     }
 
     if (this.creativeSettingsPanel) {
