@@ -415,6 +415,21 @@ The settings panel also scales up by 1.3× in physical portrait mode for easier 
 
 Task 3 implements a particle-based fire effect with a strict **10 sprite maximum** constraint.
 
+### Creative Mode: Flame Evolution 🥚
+
+> **How to play:** Click on landed flames to evolve them through 4 stages until they become golden eggs!
+
+| Stage | Appearance | Clicks to next |
+|-------|------------|----------------|
+| 1 | 🔥 Small flame | 3 clicks |
+| 2 | 🔥 Growing Egg | 3 clicks |
+| 3 | 🔥 Large Egg with less flames | 3 clicks |
+| 4 | 🥚 **Golden egg!** | Collected |
+
+The Phoenix (animated via Spine) watches over the flames as you collect eggs. Your egg count is displayed in the top-left corner.
+
+![phoenix-flame-creative](screenshots/phoenix-flame-creative.png)
+
 ```
 PhoenixFlameScene (coordinator, ~270 lines)
 ├── Displays mode selection UI
